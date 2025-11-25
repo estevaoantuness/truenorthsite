@@ -22,7 +22,8 @@ import {
   Download,
   XCircle,
   TrendingDown,
-  Home
+  Home,
+  FileText
 } from 'lucide-react';
 
 // --- CONSTANTES & CONFIGURAÇÃO ---
@@ -34,6 +35,24 @@ const COLORS = {
   textMain: 'white',
   textMuted: 'slate-400'
 };
+
+// --- FUNÇÕES AUXILIARES DE NEGÓCIO ---
+
+// Lógica crítica de risco NCM
+function calcularRiscoNCM(ncm: string, inadimplencia: number): number {
+  const limpo = (ncm || "").replace(/\D/g, "");
+  const ncmInvalido = limpo.length !== 8;
+
+  if (ncmInvalido) {
+    // Clamping inadimplencia entre 0 e 1
+    const inad = Math.min(Math.max(inadimplencia, 0), 1);
+    // Fórmula: 85 + (inadimplencia * 15)
+    const risco = 85 + (inad * 15);
+    return Math.round(risco); // Retorna inteiro entre 85 e 100
+  }
+
+  return 0; // NCM válido (8 dígitos) não gera risco específico de formato
+}
 
 // --- COMPONENTES AUXILIARES ---
 
@@ -152,8 +171,405 @@ const DashboardMockup = () => {
   );
 };
 
-// --- COMPONENTES DA LANDING PAGE ---
+// --- COMPONENTES DA FICHA DE PRODUTO ---
 
+const FichaProdutoSimulada = ({ operation, items, inadimplencia }: { operation: any, items: any[], inadimplencia: number }) => {
+  const itemPrincipal = items[0];
+  const riscoNcmPrincipal = itemPrincipal ? calcularRiscoNCM(itemPrincipal.ncm, inadimplencia) : 0;
+  
+  // Helpers para estilo de campo desabilitado
+  const Field = ({ label, value, highlightRisk, riskLabel, grow }: { label: string, value: string | number, highlightRisk?: boolean, riskLabel?: string, grow?: boolean }) => (
+    <div className={`${grow ? 'md:col-span-2' : ''} flex flex-col`}>
+      <label className="text-[10px] font-semibold text-slate-500 mb-1">{label}</label>
+      <div className={`flex items-center px-3 py-2 rounded text-xs border ${highlightRisk ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-slate-100 border-slate-300 text-slate-700'}`}>
+        {value}
+      </div>
+      {highlightRisk && riskLabel && <span className="text-[9px] text-amber-600 mt-0.5 font-medium">{riskLabel}</span>}
+    </div>
+  );
+
+  const codigoProduto = itemPrincipal?.desc ? `PRD-${String(Math.floor(Math.random()*9000)+1000)}` : 'PRD-0000';
+  const descricaoComplementar = `Operação de importação de ${operation.sector.toLowerCase()} procedente de ${operation.country}, modalidade ${operation.modality.toLowerCase()}. Contém ${items.length} item(ns) com NCM principal ${itemPrincipal?.ncm || 'não informada'}.`;
+
+  return (
+    <div className="mt-12 animate-fade-in-up">
+      <div className="flex items-center justify-between mb-4 px-1">
+        <h3 className="text-white font-bold flex items-center gap-2">
+          <FileText className="w-5 h-5 text-accent-500" /> Ficha de Produto (Simulação)
+        </h3>
+        <span className="text-xs text-slate-500 bg-slate-900 border border-slate-800 px-2 py-1 rounded">Visualização estilo Portal Único</span>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-xl overflow-hidden border border-slate-200 font-sans">
+        {/* Header estilo Portal Único */}
+        <div className="bg-slate-100 border-b border-slate-300 px-6 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-700">Inclusão de Produto</h2>
+            <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+              <span>Produto</span> <span className="text-slate-400">/</span> <span>Inclusão de Produto</span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full border border-amber-200">RASCUNHO</span>
+          </div>
+        </div>
+
+        {/* Abas */}
+        <div className="bg-slate-50 px-6 pt-4 border-b border-slate-300 flex gap-1 overflow-x-auto">
+          <button className="px-6 py-2 bg-white text-slate-800 text-sm font-semibold rounded-t-lg border-t border-x border-slate-300 -mb-px relative z-10 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">Dados Básicos</button>
+          <button className="px-6 py-2 bg-slate-100 text-slate-400 text-sm font-medium rounded-t-lg border-t border-x border-transparent hover:text-slate-600 cursor-not-allowed">Atributos</button>
+          <button className="px-6 py-2 bg-slate-100 text-slate-400 text-sm font-medium rounded-t-lg border-t border-x border-transparent hover:text-slate-600 cursor-not-allowed">Anexos</button>
+          <button className="px-6 py-2 bg-slate-100 text-slate-400 text-sm font-medium rounded-t-lg border-t border-x border-transparent hover:text-slate-600 cursor-not-allowed">Histórico</button>
+        </div>
+
+        {/* Conteúdo da Ficha */}
+        <div className="p-6 md:p-8 bg-white min-h-[400px]">
+          <div className="mb-6 flex items-center gap-2 text-slate-800 font-bold text-sm border-b border-slate-200 pb-2">
+             <div className="w-1 h-4 bg-amber-500 rounded-sm"></div> Resumo
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+             <Field label="Código do produto" value={codigoProduto} />
+             <Field label="Versão" value="1.0 (simulação)" />
+             <Field label="Situação" value="Rascunho" />
+             <Field label="* Modalidade de operação" value={operation.modality} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+             <Field label="* CNPJ raiz da empresa responsável" value={operation.cnpj || "12.345.678/0001-90"} grow />
+             <Field label="NALADi" value="—" />
+             <Field label="UNSPSC" value="—" />
+             <Field label="GPC" value="—" />
+             <Field label="GPC - Brick" value="—" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_3fr_1fr] gap-4 mb-6">
+             <Field 
+               label="* NCM" 
+               value={itemPrincipal?.ncm || ""} 
+               highlightRisk={riscoNcmPrincipal >= 85} 
+               riskLabel={riscoNcmPrincipal >= 85 ? "NCM INVÁLIDO/RISCO" : undefined}
+             />
+             <Field label="Descrição NCM" value={itemPrincipal?.desc || "Descrição do produto simulado"} />
+             <Field label="Unidade de medida estatística" value="UN" />
+          </div>
+
+          <div className="mb-8">
+            <label className="text-[10px] font-semibold text-slate-500 mb-1 block">Descrição complementar</label>
+            <div className="w-full h-24 bg-slate-100 border border-slate-300 rounded p-3 text-xs text-slate-700 resize-none">
+              {descricaoComplementar}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1 text-right">3700 restantes</div>
+          </div>
+
+          {/* Tabela de Itens */}
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+             <table className="w-full text-left text-xs">
+                <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                   <tr>
+                      <th className="px-4 py-3">#</th>
+                      <th className="px-4 py-3">Descrição</th>
+                      <th className="px-4 py-3">NCM</th>
+                      <th className="px-4 py-3">Peso (kg)</th>
+                      <th className="px-4 py-3">Valor ($)</th>
+                      <th className="px-4 py-3 text-center">Risco Calculado</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                   {items.map((item, idx) => {
+                     const riscoNcm = calcularRiscoNCM(item.ncm, inadimplencia);
+                     const riscoFinal = Math.max(riscoNcm, 0); // Simplificação para visualização
+                     const isHighRisk = riscoFinal >= 85;
+
+                     return (
+                       <tr key={idx} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-slate-500">{idx + 1}</td>
+                          <td className="px-4 py-3 text-slate-700 font-medium">{item.desc || "—"}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded ${isHighRisk ? 'bg-amber-100 text-amber-700 font-bold' : 'text-slate-600'}`}>
+                              {item.ncm || "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">{item.weight}</td>
+                          <td className="px-4 py-3 text-slate-600">{item.value}</td>
+                          <td className="px-4 py-3 text-center">
+                            {isHighRisk ? (
+                              <span className="text-red-600 font-bold">{riscoFinal}%</span>
+                            ) : (
+                              <span className="text-green-600 font-medium">Baixo</span>
+                            )}
+                          </td>
+                       </tr>
+                     );
+                   })}
+                </tbody>
+             </table>
+          </div>
+          
+          <div className="mt-4 text-[10px] text-slate-400 text-center italic">
+             * Campos simulados. O layout acima é uma representação visual inspirada no Portal Único para fins de demonstração.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- LANDING PAGE SECTIONS ---
+
+const HighLevelFlow = () => {
+  return (
+    <section className="py-20 bg-slate-900 border-y border-slate-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 className="text-3xl font-bold text-white mb-12">Fluxo Otimizado</h2>
+        <div className="flex flex-col md:flex-row justify-center items-center gap-8">
+            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 w-full md:w-64">
+                <FileSearch className="w-10 h-10 text-primary-500 mb-4 mx-auto" />
+                <h3 className="text-xl font-semibold text-white mb-2">Validação</h3>
+                <p className="text-slate-400 text-sm">Verificação automática de NCM e dados da DUIMP.</p>
+            </div>
+            <ArrowRight className="hidden md:block w-8 h-8 text-slate-600" />
+            <ArrowDown className="md:hidden w-8 h-8 text-slate-600" />
+            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 w-full md:w-64">
+                <ShieldCheck className="w-10 h-10 text-accent-500 mb-4 mx-auto" />
+                <h3 className="text-xl font-semibold text-white mb-2">Compliance</h3>
+                <p className="text-slate-400 text-sm">Checagem de LPCO e anuências obrigatórias.</p>
+            </div>
+            <ArrowRight className="hidden md:block w-8 h-8 text-slate-600" />
+            <ArrowDown className="md:hidden w-8 h-8 text-slate-600" />
+            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 w-full md:w-64">
+                <BarChart3 className="w-10 h-10 text-green-500 mb-4 mx-auto" />
+                <h3 className="text-xl font-semibold text-white mb-2">Resultados</h3>
+                <p className="text-slate-400 text-sm">Redução de custos e tempo de liberação.</p>
+            </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+const HowItWorks = () => {
+  return (
+    <section id="como-funciona" className="py-24 bg-slate-950">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Como a TrueNorth funciona</h2>
+          <p className="text-slate-400 max-w-2xl mx-auto">
+            Integração direta com seus sistemas para garantir conformidade antes mesmo do registro.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+           {[
+             { title: "Conexão", desc: "Conectamos ao seu ERP ou sistema de comex via API segura.", icon: <Globe2 className="w-6 h-6" /> },
+             { title: "Análise IA", desc: "Nossa IA cruza dados com a legislação vigente e histórico do Portal Único.", icon: <Calculator className="w-6 h-6" /> },
+             { title: "Ação", desc: "Alertas em tempo real sobre correções necessárias antes do envio.", icon: <AlertTriangle className="w-6 h-6" /> }
+           ].map((item, i) => (
+             <div key={i} className="bg-slate-900/50 p-8 rounded-2xl border border-slate-800 hover:border-slate-700 transition-colors">
+               <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center text-primary-400 mb-6">
+                 {item.icon}
+               </div>
+               <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
+               <p className="text-slate-400 leading-relaxed">{item.desc}</p>
+             </div>
+           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const BenefitsSection = () => {
+   return (
+    <section className="py-24 bg-slate-900 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              Benefícios tangíveis para sua operação
+            </h2>
+            <div className="space-y-6">
+              {[
+                "Redução de até 90% em multas por erro de classificação.",
+                "Diminuição drástica no tempo de desembaraço.",
+                "Visibilidade total do processo DUIMP.",
+                "Integração nativa com Catálogo de Produtos."
+              ].map((benefit, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-green-500 shrink-0 mt-0.5" />
+                  <span className="text-slate-300 text-lg">{benefit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="relative">
+             <div className="absolute inset-0 bg-primary-600/20 blur-3xl rounded-full"></div>
+             <div className="relative bg-slate-900 border border-slate-800 rounded-2xl p-8">
+                <div className="flex items-center justify-between mb-8 border-b border-slate-800 pb-4">
+                  <div>
+                    <div className="text-sm text-slate-500 uppercase font-semibold">Economia Média Mensal</div>
+                    <div className="text-3xl font-bold text-white">R$ 145.000</div>
+                  </div>
+                  <div className="p-3 bg-green-500/10 rounded-lg">
+                    <TrendingDown className="w-6 h-6 text-green-500" />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                   <div className="flex justify-between text-sm">
+                     <span className="text-slate-400">Demurrage</span>
+                     <span className="text-white font-medium">-45%</span>
+                   </div>
+                   <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                     <div className="bg-primary-500 h-full w-[55%]"></div>
+                   </div>
+                   <div className="flex justify-between text-sm mt-4">
+                     <span className="text-slate-400">Multas Aduaneiras</span>
+                     <span className="text-white font-medium">-85%</span>
+                   </div>
+                   <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                     <div className="bg-accent-500 h-full w-[15%]"></div>
+                   </div>
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+   )
+}
+
+const AboutSectionWithShip = () => {
+    return (
+        <section id="sobre" className="py-24 bg-slate-950 overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div className="order-2 lg:order-1">
+                       <ShipAnimationComponent />
+                    </div>
+                    <div className="order-1 lg:order-2">
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Navegue com segurança no novo processo de importação</h2>
+                        <p className="text-slate-400 text-lg mb-6 leading-relaxed">
+                            A chegada da DUIMP muda completamente a forma como o Brasil importa. 
+                            A TrueNorth é a bússola que guia sua empresa através dessas mudanças, 
+                            transformando conformidade em vantagem competitiva.
+                        </p>
+                        <p className="text-slate-400 text-lg mb-8 leading-relaxed">
+                            Não deixe sua carga parada por erros de preenchimento ou falta de licenciamento.
+                            Nossa tecnologia antecipa problemas antes que eles cheguem ao porto.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+};
+
+const ForWhomSection = () => {
+  return (
+    <section id="para-quem" className="py-24 bg-slate-900 border-t border-slate-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+         <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Para quem é a TrueNorth?</h2>
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 bg-slate-950 rounded-2xl border border-slate-800 hover:border-primary-500/50 transition-all group">
+               <Ship className="w-10 h-10 text-primary-500 mb-6 group-hover:scale-110 transition-transform" />
+               <h3 className="text-xl font-bold text-white mb-3">Importadores</h3>
+               <p className="text-slate-400">Que buscam agilidade no desembaraço e redução de custos operacionais.</p>
+            </div>
+            <div className="p-8 bg-slate-950 rounded-2xl border border-slate-800 hover:border-accent-500/50 transition-all group">
+               <Globe2 className="w-10 h-10 text-accent-500 mb-6 group-hover:scale-110 transition-transform" />
+               <h3 className="text-xl font-bold text-white mb-3">Trading Companies</h3>
+               <p className="text-slate-400">Que gerenciam múltiplas operações e precisam de controle centralizado.</p>
+            </div>
+            <div className="p-8 bg-slate-950 rounded-2xl border border-slate-800 hover:border-orange-500/50 transition-all group">
+               <FileCheck className="w-10 h-10 text-orange-500 mb-6 group-hover:scale-110 transition-transform" />
+               <h3 className="text-xl font-bold text-white mb-3">Despachantes</h3>
+               <p className="text-slate-400">Que desejam oferecer um serviço premium e à prova de erros para seus clientes.</p>
+            </div>
+         </div>
+      </div>
+    </section>
+  )
+}
+
+const CTASection = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
+  return (
+    <section id="contato" className="py-24 bg-primary-600 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Pronto para otimizar suas importações?</h2>
+            <p className="text-primary-100 text-xl mb-10 max-w-2xl mx-auto">
+                Faça uma simulação agora e descubra quanto sua empresa pode economizar evitando erros na DUIMP.
+            </p>
+            <button 
+                onClick={onSimulateClick}
+                className="bg-white text-primary-600 hover:bg-slate-100 px-10 py-4 rounded-lg text-lg font-bold transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"
+            >
+                Começar Simulação Gratuita
+            </button>
+        </div>
+    </section>
+  )
+}
+
+const Footer = () => {
+  return (
+    <footer className="bg-slate-950 border-t border-slate-800 pt-16 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+           <div className="col-span-1 md:col-span-1">
+              <div className="flex items-center gap-2 mb-4">
+                 <Anchor className="h-6 w-6 text-accent-500" />
+                 <span className="font-bold text-lg text-white">TrueNorth</span>
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                 Inteligência e compliance para o novo processo de importação brasileiro.
+              </p>
+           </div>
+           <div>
+              <h4 className="text-white font-semibold mb-4">Plataforma</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                 <li><a href="#" className="hover:text-accent-400 transition-colors">Funcionalidades</a></li>
+                 <li><a href="#" className="hover:text-accent-400 transition-colors">Integrações</a></li>
+                 <li><a href="#" className="hover:text-accent-400 transition-colors">Segurança</a></li>
+              </ul>
+           </div>
+           <div>
+              <h4 className="text-white font-semibold mb-4">Empresa</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                 <li><a href="#" className="hover:text-accent-400 transition-colors">Sobre nós</a></li>
+                 <li><a href="#" className="hover:text-accent-400 transition-colors">Carreiras</a></li>
+                 <li><a href="#" className="hover:text-accent-400 transition-colors">Blog</a></li>
+              </ul>
+           </div>
+           <div>
+              <h4 className="text-white font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                 <li><a href="#" className="hover:text-accent-400 transition-colors">Privacidade</a></li>
+                 <li><a href="#" className="hover:text-accent-400 transition-colors">Termos de uso</a></li>
+              </ul>
+           </div>
+        </div>
+        <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+           <p className="text-slate-500 text-sm">© {new Date().getFullYear()} TrueNorth. Todos os direitos reservados.</p>
+           <div className="flex gap-4">
+              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer">
+                 <span className="font-bold text-xs">in</span>
+              </div>
+              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer">
+                 <span className="font-bold text-xs">tw</span>
+              </div>
+           </div>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+// --- PÁGINAS PRINCIPAIS ---
+
+// 1. LANDING PAGE WRAPPER
 const Navbar = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -276,313 +692,6 @@ const Hero = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
   );
 };
 
-const HowItWorks = () => {
-  const steps = [
-    { id: 1, title: "Importação dos dados", desc: "Ingestão automática de BL, Invoices, Packing List, NCM e catálogo de produtos.", icon: <Globe2 className="w-5 h-5 text-white" /> },
-    { id: 2, title: "Validação Inteligente", desc: "Checagem cruzada de NCM, necessidade de LPCO e consistência de dados tributários.", icon: <FileSearch className="w-5 h-5 text-white" /> },
-    { id: 3, title: "Integração Portal Único", desc: "Pré-validação dos dados simulando as regras oficiais da Receita Federal.", icon: <ShieldCheck className="w-5 h-5 text-white" /> },
-    { id: 4, title: "Alertas e Risco", desc: "Sugestão de correção e estimativa de economia antes do registro oficial.", icon: <AlertTriangle className="w-5 h-5 text-white" /> }
-  ];
-
-  return (
-    <section id="como-funciona" className="py-24 bg-slate-950 border-t border-slate-900 relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-white mb-4">Como a TrueNorth funciona</h2>
-          <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-            Transformamos documentos dispersos em uma operação blindada contra erros.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {steps.map((step) => (
-            <div key={step.id} className="relative group">
-              {step.id !== 4 && (
-                <div className="hidden lg:block absolute top-8 left-1/2 w-full h-[1px] bg-slate-800 -z-10 group-hover:bg-primary-900/50 transition-colors" />
-              )}
-              <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 hover:border-primary-600/30 transition-all duration-300 h-full relative z-10 hover:bg-slate-900 hover:-translate-y-1 hover:shadow-xl">
-                <div className="w-12 h-12 bg-slate-800 rounded-lg border border-slate-700 flex items-center justify-center mb-6 group-hover:bg-primary-600 group-hover:border-primary-500 transition-colors">
-                  {step.icon}
-                </div>
-                <div className="flex items-center justify-between mb-3">
-                   <h3 className="text-lg font-semibold text-white">{step.title}</h3>
-                   <span className="text-xs font-bold text-slate-600 bg-slate-950 px-2 py-1 rounded border border-slate-800">0{step.id}</span>
-                </div>
-                <p className="text-sm text-slate-400 leading-relaxed">{step.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const HighLevelFlow = () => {
-  return (
-    <section className="py-16 bg-slate-950 border-y border-slate-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row items-center justify-center gap-8 text-slate-400">
-          <div className="flex items-center gap-3 bg-slate-900 px-6 py-4 rounded-lg border border-slate-800 shadow-sm">
-            <Container className="w-5 h-5 text-slate-500" />
-            <div className="text-sm font-medium">
-              <div className="text-white">Dados de Origem</div>
-              <div className="text-xs text-slate-500">Cliente / Exportador</div>
-            </div>
-          </div>
-          <ArrowRight className="w-5 h-5 text-slate-600 hidden md:block" />
-          <ArrowDown className="w-5 h-5 text-slate-600 md:hidden" />
-          <div className="flex items-center gap-3 bg-slate-900 px-6 py-4 rounded-lg border-2 border-primary-900/30 shadow-[0_0_20px_rgba(37,99,235,0.1)] relative">
-            <div className="absolute -top-3 left-4 bg-primary-600 text-[10px] text-white font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Engine</div>
-            <Anchor className="w-6 h-6 text-primary-500" />
-            <div className="text-sm font-medium">
-              <div className="text-white font-bold">TrueNorth</div>
-              <div className="text-xs text-primary-400/80">Validação & Inteligência</div>
-            </div>
-          </div>
-          <ArrowRight className="w-5 h-5 text-slate-600 hidden md:block" />
-          <ArrowDown className="w-5 h-5 text-slate-600 md:hidden" />
-          <div className="flex items-center gap-3 bg-slate-900 px-6 py-4 rounded-lg border border-slate-800 shadow-sm opacity-80">
-            <Globe2 className="w-5 h-5 text-slate-500" />
-            <div className="text-sm font-medium">
-              <div className="text-white">Portal Único</div>
-              <div className="text-xs text-slate-500">Receita Federal</div>
-            </div>
-          </div>
-          <ArrowRight className="w-5 h-5 text-slate-600 hidden md:block" />
-          <ArrowDown className="w-5 h-5 text-slate-600 md:hidden" />
-          <div className="flex items-center gap-3 bg-slate-900 px-6 py-4 rounded-lg border border-slate-800 shadow-sm opacity-80">
-            <CheckCircle2 className="w-5 h-5 text-green-500/50" />
-            <div className="text-sm font-medium">
-              <div className="text-white">Liberação</div>
-              <div className="text-xs text-slate-500">Desembaraço Ágil</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-const BenefitsSection = () => {
-  const benefits = [
-    { title: "Redução de Demurrage", value: "Até 40%", sub: "menos incidentes", desc: "Menos tempo de conferência significa liberação mais rápida e menos custos de armazenagem.", icon: <Clock /> },
-    { title: "Menos multas NCM", value: "Zero", sub: "erros de classificação", desc: "Validação preditiva elimina multas por classificação incorreta antes do registro.", icon: <ShieldCheck /> },
-    { title: "Eficiência Operacional", value: "-80h", sub: "por mês", desc: "Elimine o retrabalho manual e a conferência de planilhas infinitas.", icon: <BarChart3 /> },
-    { title: "Previsibilidade", value: "100%", sub: "controle de lead time", desc: "Controle centralizado de todos os processos, licenças e custos estimados.", icon: <Container /> },
-  ];
-
-  return (
-    <section id="beneficios" className="py-24 bg-slate-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-6">Resultados que impactam o caixa</h2>
-            <p className="text-slate-400 text-lg mb-8">
-              A TrueNorth não é apenas um software de conformidade. É uma ferramenta de eficiência financeira para sua operação de comércio exterior.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {benefits.map((item, idx) => (
-                <div key={idx} className="p-5 bg-slate-900 border border-slate-800 rounded-xl hover:border-slate-700 transition-colors">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-slate-300 font-medium text-sm">{item.title}</span>
-                    <span className="text-primary-500 bg-primary-500/10 p-1.5 rounded-md">{React.cloneElement(item.icon, { className: "w-4 h-4" })}</span>
-                  </div>
-                  <div className="text-3xl font-bold text-white mb-0.5">{item.value}</div>
-                  <div className="text-xs font-semibold text-accent-500 uppercase tracking-wide mb-3">{item.sub}</div>
-                  <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="relative h-[500px] bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl border border-slate-800 flex flex-col items-center justify-center overflow-hidden p-8">
-             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
-             <div className="w-full max-w-sm">
-                <div className="flex justify-between text-xs text-slate-500 mb-2 uppercase font-semibold tracking-wider">
-                  <span>Sem TrueNorth</span>
-                  <span>Com TrueNorth</span>
-                </div>
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="flex-1 flex flex-col gap-1 items-end">
-                    <div className="w-full h-8 bg-red-900/40 rounded flex items-center justify-end px-2 text-xs text-red-200">Risco Alto</div>
-                  </div>
-                  <div className="w-px h-10 bg-slate-800"></div>
-                  <div className="flex-1 flex flex-col gap-1">
-                    <div className="w-1/4 h-8 bg-green-900/40 rounded flex items-center px-2 text-xs text-green-200 whitespace-nowrap">Risco Baixo</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="flex-1 flex flex-col gap-1 items-end">
-                    <div className="w-3/4 h-8 bg-slate-700 rounded flex items-center justify-end px-2 text-xs text-slate-300">5 dias</div>
-                  </div>
-                  <div className="w-px h-10 bg-slate-800"></div>
-                  <div className="flex-1 flex flex-col gap-1">
-                    <div className="w-1/4 h-8 bg-primary-900/40 rounded border border-primary-500/30 flex items-center px-2 text-xs text-primary-200">1 dia</div>
-                  </div>
-                </div>
-                <div className="mt-8 flex justify-center relative">
-                   <div className="w-48 h-48 rounded-full border border-slate-800 bg-slate-900/50 flex items-center justify-center relative shadow-[0_0_40px_rgba(2,6,23,0.8)_inset]">
-                      <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 192 192">
-                         <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-800" />
-                         <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={2 * Math.PI * 80} strokeDashoffset={2 * Math.PI * 80 * (1 - 0.98)} strokeLinecap="round" className="text-primary-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                      </svg>
-                      <div className="text-center z-10">
-                        <div className="text-4xl font-bold text-white tracking-tight">98%</div>
-                        <div className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mt-1">Conformidade</div>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const AboutSectionWithShip = () => {
-  return (
-    <section className="py-24 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 overflow-hidden relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-          <div className="order-2 md:order-1">
-            <h2 className="text-3xl font-bold text-white mb-6">O porto seguro da sua operação</h2>
-            <div className="space-y-6 text-slate-400 text-lg leading-relaxed">
-              <p>Somos um time focado em reduzir erro e ociosidade nas importações brasileiras. A complexidade da DUIMP não precisa ser um risco para o seu negócio.</p>
-              <p>Combinamos conhecimento aduaneiro profundo, tecnologia de ponta e IA para tornar o processo de importação mais inteligente, previsível e ágil.</p>
-              <div className="bg-slate-950/50 p-6 border-l-4 border-primary-600 rounded-r-lg">
-                <p className="text-white font-medium italic">"Nosso objetivo é dar previsibilidade de custo e tempo para operações que não podem se dar ao luxo de ficar com contêiner parado no porto."</p>
-              </div>
-            </div>
-          </div>
-          <div className="order-1 md:order-2">
-            <ShipAnimationComponent />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const ForWhomSection = () => {
-  const personas = [
-    { title: "Importadores Médios", items: ["Visão consolidada de todos os processos", "Alertas de custo em tempo real", "Compliance fiscal automatizado"] },
-    { title: "Trading Companies", items: ["Gestão de múltiplos clientes e CNPJs", "Histórico centralizado de NCMs", "Redução de lead-time operacional"] },
-    { title: "Operadores Logísticos", items: ["Previsibilidade de atracação", "Integração via API com sistemas legados", "Status unificado para o cliente final"] },
-    { title: "Despachantes Aduaneiros", items: ["Validação prévia de documentos", "Menos digitação manual", "Foco em inteligência e consultoria"] }
-  ];
-
-  return (
-    <section id="para-quem" className="py-24 bg-slate-950 border-t border-slate-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-white">Quem usa a TrueNorth?</h2>
-          <p className="mt-4 text-slate-400">Desenhado para quem movimenta o comércio exterior brasileiro.</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {personas.map((persona, i) => (
-            <div key={i} className="bg-slate-900 border border-slate-800 p-6 rounded-xl hover:border-accent-500/30 hover:shadow-lg transition-all group">
-              <h3 className="text-lg font-bold text-white mb-6 group-hover:text-accent-400 transition-colors">{persona.title}</h3>
-              <ul className="space-y-4">
-                {persona.items.map((item, idx) => (
-                  <li key={idx} className="flex items-start gap-3 text-slate-400 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const CTASection = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
-  return (
-    <section id="contato" className="py-24 bg-slate-950 relative overflow-hidden">
-      <div className="absolute inset-0 bg-primary-900/10 radial-gradient-mask pointer-events-none"></div>
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary-600/10 rounded-full blur-[100px]"></div>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-        <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 p-8 md:p-12 rounded-2xl shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-600 via-accent-500 to-primary-600"></div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Quer testar a TrueNorth na sua operação?
-          </h2>
-          <p className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Conectamos com seus dados atuais de forma segura e mostramos onde você pode reduzir custos e atrasos na sua importação.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-primary-600 hover:bg-primary-500 text-white px-8 py-4 rounded-lg text-lg font-bold transition-all shadow-lg shadow-primary-600/25 w-full sm:w-auto hover:-translate-y-1">
-              Agendar conversa
-            </button>
-            <button 
-              onClick={onSimulateClick}
-              className="bg-transparent border border-slate-700 hover:bg-slate-800 text-white px-8 py-4 rounded-lg text-lg font-medium transition-all w-full sm:w-auto"
-            >
-              Ver Simulação de Impacto
-            </button>
-          </div>
-          <div className="mt-8 text-xs text-slate-500">
-             Sem compromisso. Setup inicial em menos de 24h.
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const Footer = () => {
-  return (
-    <footer className="bg-slate-950 border-t border-slate-900 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-               <Anchor className="h-6 w-6 text-accent-500" />
-               <span className="font-bold text-xl text-white">TrueNorth</span>
-            </div>
-            <p className="text-slate-500 text-sm max-w-sm leading-relaxed">
-              Inteligência e compliance para o novo processo de importação brasileiro. 
-              Tecnologia que navega a burocracia para você, do embarque ao desembaraço.
-            </p>
-            <div className="mt-6 flex gap-4">
-              <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer transition-colors">In</div>
-              <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer transition-colors">Ig</div>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-white font-semibold mb-4">Produto</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Funcionalidades</a></li>
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Integração Portal Único</a></li>
-              <li><a href="#" className="hover:text-primary-400 transition-colors">API & Docs</a></li>
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Segurança</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-white font-semibold mb-4">Legal</h4>
-            <ul className="space-y-3 text-sm text-slate-500">
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Política de Privacidade</a></li>
-              <li><a href="#" className="hover:text-primary-400 transition-colors">Termos de Uso</a></li>
-              <li><a href="mailto:contato@truenorth.com.br" className="text-slate-400 hover:text-primary-400 transition-colors">contato@truenorth.com.br</a></li>
-            </ul>
-          </div>
-        </div>
-        <div className="border-t border-slate-900 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-600">
-          <p>&copy; {new Date().getFullYear()} TrueNorth RegTech Ltda. Todos os direitos reservados.</p>
-          <div className="mt-4 md:mt-0 flex gap-6">
-             <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div> Sistema Operacional</span>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-};
-
-// --- PÁGINAS PRINCIPAIS ---
-
-// 1. LANDING PAGE WRAPPER
 const LandingPage = ({ onNavigateToSimulation }: { onNavigateToSimulation: () => void }) => {
   return (
     <>
@@ -735,7 +844,8 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       demurrage: string,
       ops: string,
       total: string
-    }
+    },
+    inadimplencia: number
   }>(null);
 
   const handleItemChange = (id: number, field: string, value: string) => {
@@ -760,15 +870,30 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
     setShowReport(false);
 
     setTimeout(() => {
+      // Simulação de inadimplência (0 a 1) para cálculo de risco NCM
+      const inadimplenciaSimulada = 0.6; // 60%
+
       const risks = [];
       let impactLow = 0;
       let impactHigh = 0;
 
+      // 1. Verificação de NCM (vazio ou inválido) com regra de risco
+      const itemsWithRisk = items.map(item => {
+        const riscoNcm = calcularRiscoNCM(item.ncm, inadimplenciaSimulada);
+        return { ...item, riscoNcm };
+      });
+
+      const invalidNCMs = itemsWithRisk.filter(i => i.riscoNcm >= 85);
+
+      if (invalidNCMs.length > 0) {
+        risks.push(`${invalidNCMs.length} item(s) com NCM inválida ou de alto risco (>85%).`);
+        impactLow += 500 * invalidNCMs.length;
+        impactHigh += 2000 * invalidNCMs.length;
+      }
+
       const emptyNCMs = items.filter(i => !i.ncm);
       if (emptyNCMs.length > 0) {
-        risks.push(`NCM não informada para ${emptyNCMs.length} item(s). Multa potencial de 1% sobre valor aduaneiro.`);
-        impactLow += 500 * emptyNCMs.length;
-        impactHigh += 2000 * emptyNCMs.length;
+        risks.push(`NCM não informada para ${emptyNCMs.length} item(s).`);
       }
 
       const subValueRisks = items.filter(i => {
@@ -818,7 +943,8 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
           demurrage: fmt(demurragePart),
           ops: fmt(opsPart),
           total: fmt(totalAvoidedRaw)
-        }
+        },
+        inadimplencia: inadimplenciaSimulada
       });
 
       setCalculating(false);
@@ -1139,6 +1265,16 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
             </div>
 
           </div>
+
+          {/* FICHA DE PRODUTO SIMULADA (NOVA SEÇÃO) */}
+          {results && (
+             <FichaProdutoSimulada 
+                operation={operationData} 
+                items={items} 
+                inadimplencia={results.inadimplencia} 
+             />
+          )}
+
         </div>
       </main>
       <Footer />
