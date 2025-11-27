@@ -59,10 +59,107 @@ function calcularRiscoNCM(ncm: string, inadimplencia: number): number {
   return 0; // NCM válido (8 dígitos) não gera risco específico de formato
 }
 
+// --- BASE DE NCMs COM REGRAS DE COMPLIANCE ---
+const NCM_DATABASE: Record<string, {
+  desc: string;
+  aliquotaII: number;
+  aliquotaIPI: number;
+  anuentes: string[];
+  exTarifario?: boolean;
+  destaque?: string;
+}> = {
+  // ELETRÔNICOS (Cap. 84-85)
+  '85171231': { desc: 'Telefones celulares', aliquotaII: 16, aliquotaIPI: 15, anuentes: ['ANATEL'] },
+  '85171291': { desc: 'Aparelhos para transmissão de dados sem fio', aliquotaII: 16, aliquotaIPI: 15, anuentes: ['ANATEL'] },
+  '85183000': { desc: 'Fones de ouvido e auriculares', aliquotaII: 20, aliquotaIPI: 15, anuentes: ['ANATEL'] },
+  '84713012': { desc: 'Notebooks e laptops', aliquotaII: 16, aliquotaIPI: 15, anuentes: ['ANATEL'], exTarifario: true },
+  '84717020': { desc: 'Unidades de disco rígido (HDD)', aliquotaII: 2, aliquotaIPI: 0, anuentes: [] },
+  '85234110': { desc: 'Cartões de memória flash', aliquotaII: 16, aliquotaIPI: 15, anuentes: [] },
+  '85285990': { desc: 'Monitores de vídeo', aliquotaII: 20, aliquotaIPI: 15, anuentes: [] },
+  '84719000': { desc: 'Outras máquinas de processamento de dados', aliquotaII: 16, aliquotaIPI: 0, anuentes: [] },
+
+  // AUTOPEÇAS (Cap. 87)
+  '87089990': { desc: 'Outras partes e acessórios de veículos', aliquotaII: 18, aliquotaIPI: 5, anuentes: ['INMETRO'] },
+  '87088000': { desc: 'Amortecedores de suspensão', aliquotaII: 18, aliquotaIPI: 5, anuentes: ['INMETRO'] },
+  '87083010': { desc: 'Freios e suas partes', aliquotaII: 18, aliquotaIPI: 5, anuentes: ['INMETRO'] },
+  '87084090': { desc: 'Caixas de marchas', aliquotaII: 18, aliquotaIPI: 5, anuentes: ['INMETRO'] },
+  '87085099': { desc: 'Eixos e semi-eixos', aliquotaII: 18, aliquotaIPI: 5, anuentes: ['INMETRO'] },
+  '87087010': { desc: 'Rodas e suas partes', aliquotaII: 18, aliquotaIPI: 5, anuentes: ['INMETRO'] },
+  '40111000': { desc: 'Pneus novos para automóveis', aliquotaII: 16, aliquotaIPI: 0, anuentes: ['INMETRO', 'IBAMA'] },
+  '68138100': { desc: 'Pastilhas de freio', aliquotaII: 14, aliquotaIPI: 0, anuentes: ['INMETRO'] },
+
+  // COSMÉTICOS (Cap. 33)
+  '33049990': { desc: 'Outros produtos de beleza ou maquiagem', aliquotaII: 18, aliquotaIPI: 22, anuentes: ['ANVISA'] },
+  '33049100': { desc: 'Pós para maquiagem', aliquotaII: 18, aliquotaIPI: 22, anuentes: ['ANVISA'] },
+  '33041000': { desc: 'Produtos de maquiagem para lábios', aliquotaII: 18, aliquotaIPI: 22, anuentes: ['ANVISA'] },
+  '33042090': { desc: 'Produtos de maquiagem para olhos', aliquotaII: 18, aliquotaIPI: 22, anuentes: ['ANVISA'] },
+  '33051000': { desc: 'Xampus', aliquotaII: 18, aliquotaIPI: 7, anuentes: ['ANVISA'] },
+  '33059000': { desc: 'Outras preparações capilares', aliquotaII: 18, aliquotaIPI: 7, anuentes: ['ANVISA'] },
+  '33061000': { desc: 'Dentifrícios', aliquotaII: 18, aliquotaIPI: 0, anuentes: ['ANVISA'] },
+  '33030010': { desc: 'Perfumes e águas-de-colônia', aliquotaII: 18, aliquotaIPI: 42, anuentes: ['ANVISA'] },
+
+  // ALIMENTOS (Cap. 16-22)
+  '22041000': { desc: 'Vinhos espumantes', aliquotaII: 27, aliquotaIPI: 40, anuentes: ['MAPA'] },
+  '22042100': { desc: 'Outros vinhos em recipientes até 2L', aliquotaII: 27, aliquotaIPI: 30, anuentes: ['MAPA'] },
+  '22030000': { desc: 'Cervejas de malte', aliquotaII: 20, aliquotaIPI: 40, anuentes: ['MAPA'] },
+  '18063100': { desc: 'Chocolates recheados', aliquotaII: 20, aliquotaIPI: 5, anuentes: ['MAPA'] },
+  '18063200': { desc: 'Chocolate em tabletes ou barras', aliquotaII: 20, aliquotaIPI: 5, anuentes: ['MAPA'] },
+  '21069090': { desc: 'Outras preparações alimentícias', aliquotaII: 16, aliquotaIPI: 0, anuentes: ['ANVISA', 'MAPA'] },
+  '16010000': { desc: 'Embutidos e produtos similares de carne', aliquotaII: 16, aliquotaIPI: 0, anuentes: ['MAPA'] },
+  '04069000': { desc: 'Outros queijos', aliquotaII: 28, aliquotaIPI: 0, anuentes: ['MAPA'] },
+  '20098900': { desc: 'Outros sucos de frutas', aliquotaII: 14, aliquotaIPI: 0, anuentes: ['MAPA'] },
+
+  // MÁQUINAS INDUSTRIAIS (Cap. 84)
+  '84798999': { desc: 'Outras máquinas e aparelhos mecânicos', aliquotaII: 14, aliquotaIPI: 0, anuentes: [], exTarifario: true },
+  '84212300': { desc: 'Aparelhos para filtrar óleos', aliquotaII: 14, aliquotaIPI: 0, anuentes: [] },
+  '84229090': { desc: 'Partes de máquinas de lavar louça', aliquotaII: 18, aliquotaIPI: 0, anuentes: [] },
+  '84314990': { desc: 'Partes de guindastes e gruas', aliquotaII: 14, aliquotaIPI: 5, anuentes: [] },
+  '84329000': { desc: 'Partes de máquinas agrícolas', aliquotaII: 0, aliquotaIPI: 0, anuentes: ['MAPA'], destaque: 'Máquinas agrícolas' },
+  '84248990': { desc: 'Outros aparelhos mecânicos para projetar', aliquotaII: 14, aliquotaIPI: 5, anuentes: [] },
+  '84223000': { desc: 'Máquinas de encher, fechar ou etiquetar', aliquotaII: 14, aliquotaIPI: 0, anuentes: [], exTarifario: true },
+  '84669400': { desc: 'Partes para máquinas-ferramenta', aliquotaII: 14, aliquotaIPI: 0, anuentes: [] },
+
+  // TÊXTEIS (Cap. 50-63)
+  '62034200': { desc: 'Calças masculinas de algodão', aliquotaII: 35, aliquotaIPI: 0, anuentes: [] },
+  '62046200': { desc: 'Calças femininas de algodão', aliquotaII: 35, aliquotaIPI: 0, anuentes: [] },
+  '61091000': { desc: 'T-shirts de malha de algodão', aliquotaII: 35, aliquotaIPI: 0, anuentes: [] },
+  '62052000': { desc: 'Camisas masculinas de algodão', aliquotaII: 35, aliquotaIPI: 0, anuentes: [] },
+  '61046200': { desc: 'Calças femininas de malha de algodão', aliquotaII: 35, aliquotaIPI: 0, anuentes: [] },
+  '64039990': { desc: 'Outros calçados de couro', aliquotaII: 35, aliquotaIPI: 0, anuentes: [] },
+  '42021200': { desc: 'Malas e maletas com superfície exterior de plástico', aliquotaII: 20, aliquotaIPI: 0, anuentes: [] },
+  '42022200': { desc: 'Bolsas com superfície exterior de plástico', aliquotaII: 20, aliquotaIPI: 0, anuentes: [] },
+
+  // QUÍMICOS (Cap. 28-38)
+  '29181400': { desc: 'Ácido cítrico', aliquotaII: 12, aliquotaIPI: 0, anuentes: ['ANVISA'], destaque: 'Uso farmacêutico' },
+  '29362100': { desc: 'Vitaminas A e seus derivados', aliquotaII: 0, aliquotaIPI: 0, anuentes: ['ANVISA'] },
+  '38089410': { desc: 'Desinfetantes', aliquotaII: 14, aliquotaIPI: 0, anuentes: ['ANVISA'] },
+  '32089090': { desc: 'Outras tintas e vernizes', aliquotaII: 14, aliquotaIPI: 0, anuentes: ['IBAMA'] },
+  '34022000': { desc: 'Preparações tensoativas', aliquotaII: 14, aliquotaIPI: 0, anuentes: ['ANVISA'] },
+};
+
 // --- DADOS DE EXEMPLO PARA DEMONSTRAÇÃO ---
 const SAMPLE_INVOICES = {
   electronics: {
+    // Dados do documento
     name: "Invoice_Eletrônicos_Shenzhen.pdf",
+    invoiceNumber: "INV-2024-SZ-00847",
+    invoiceDate: "2024-11-15",
+
+    // Dados do fornecedor
+    supplier: {
+      name: "Shenzhen TechPro Electronics Co., Ltd.",
+      address: "Building A12, Huaqiang North, Futian District, Shenzhen 518031, China",
+      contact: "export@techpro-sz.cn"
+    },
+
+    // Dados comerciais
+    incoterm: "FOB Shenzhen",
+    currency: "USD",
+    totalValue: 18450.00,
+    freight: 1250.00,
+    insurance: 185.00,
+
+    // Dados da operação
     operation: {
       type: 'Importação Própria',
       urf: 'Santos (SP)',
@@ -70,15 +167,65 @@ const SAMPLE_INVOICES = {
       modality: 'Normal',
       sector: 'Outros'
     },
+
+    // Dados logísticos
+    portOrigin: "Shenzhen (CNSZX)",
+    portDestination: "Santos (BRSSZ)",
+    vessel: "MSC PALOMA III",
+    container: "MSCU7234561 - 20' DRY",
+    etd: "2024-11-20",
+    eta: "2024-12-25",
+
+    // Itens detalhados
     items: [
-      { id: 1, desc: 'Smartphone Android 128GB', ncm: '85171231', weight: '150', value: '15000' },
-      { id: 2, desc: 'Fone Bluetooth TWS', ncm: '85183000', weight: '50', value: '3000' }
+      {
+        id: 1,
+        desc: 'Smartphone Android 128GB - Model TP-X15 Pro',
+        ncm: '85171231',
+        weight: '150',
+        value: '15000',
+        quantity: '100 UN',
+        unitPrice: '150.00',
+        origin: 'CN'
+      },
+      {
+        id: 2,
+        desc: 'Fone Bluetooth TWS - Model AirBuds Pro 3',
+        ncm: '85183000',
+        weight: '50',
+        value: '3000',
+        quantity: '200 UN',
+        unitPrice: '15.00',
+        origin: 'CN'
+      }
     ],
+
+    // Compliance
     compliance: { anvisa: false, mapa: false, outros: false, lpcoRequested: true },
-    processingTime: 6 // minutos
+    anuentes: ['ANATEL'],
+
+    // Métricas de processamento
+    processingTime: 6,
+    manualTimeEstimate: 25
   },
+
   autoparts: {
-    name: "Invoice_Autopeças_Germany.pdf",
+    name: "Invoice_Autopeças_Stuttgart.pdf",
+    invoiceNumber: "DE-2024-AUT-003291",
+    invoiceDate: "2024-11-10",
+
+    supplier: {
+      name: "Süddeutsche Automotive GmbH",
+      address: "Industriestraße 45, 70565 Stuttgart, Germany",
+      contact: "export@sud-auto.de"
+    },
+
+    incoterm: "CIF Paranaguá",
+    currency: "EUR",
+    totalValue: 8750.00,
+    freight: 0, // Incluído no CIF
+    insurance: 0, // Incluído no CIF
+
     operation: {
       type: 'Importação Própria',
       urf: 'Paranaguá (PR)',
@@ -86,16 +233,71 @@ const SAMPLE_INVOICES = {
       modality: 'Normal',
       sector: 'Autopeças'
     },
+
+    portOrigin: "Hamburg (DEHAM)",
+    portDestination: "Paranaguá (BRPNG)",
+    vessel: "HAMBURG EXPRESS",
+    container: "HLCU8547123 - 20' DRY",
+    etd: "2024-11-15",
+    eta: "2024-12-10",
+
     items: [
-      { id: 1, desc: 'Kit Embreagem Completo', ncm: '87089990', weight: '25', value: '1200' },
-      { id: 2, desc: 'Amortecedor Dianteiro Par', ncm: '87088000', weight: '18', value: '800' },
-      { id: 3, desc: 'Pastilha Freio Cerâmica', ncm: '68138100', weight: '5', value: '350' }
+      {
+        id: 1,
+        desc: 'Kit Embreagem Completo - Ref. VAG-001234',
+        ncm: '87089990',
+        weight: '25',
+        value: '4500',
+        quantity: '15 KIT',
+        unitPrice: '300.00',
+        origin: 'DE'
+      },
+      {
+        id: 2,
+        desc: 'Amortecedor Dianteiro Par - Ref. BILSTEIN-B4',
+        ncm: '87088000',
+        weight: '18',
+        value: '3200',
+        quantity: '20 PAR',
+        unitPrice: '160.00',
+        origin: 'DE'
+      },
+      {
+        id: 3,
+        desc: 'Pastilha Freio Cerâmica Premium - Ref. ATE-13046',
+        ncm: '68138100',
+        weight: '5',
+        value: '1050',
+        quantity: '30 JG',
+        unitPrice: '35.00',
+        origin: 'DE'
+      }
     ],
+
     compliance: { anvisa: false, mapa: false, outros: true, lpcoRequested: true },
-    processingTime: 8 // minutos
+    anuentes: ['INMETRO'],
+
+    processingTime: 8,
+    manualTimeEstimate: 30
   },
+
   cosmetics: {
-    name: "Invoice_Cosméticos_USA.pdf",
+    name: "Invoice_Cosméticos_NewYork.pdf",
+    invoiceNumber: "US-NYC-2024-78456",
+    invoiceDate: "2024-11-08",
+
+    supplier: {
+      name: "Manhattan Beauty Supplies Inc.",
+      address: "350 Fifth Avenue, Suite 4500, New York, NY 10118, USA",
+      contact: "international@manhattanbeauty.com"
+    },
+
+    incoterm: "DAP Guarulhos Airport",
+    currency: "USD",
+    totalValue: 12500.00,
+    freight: 0, // Incluído no DAP
+    insurance: 0, // Incluído no DAP
+
     operation: {
       type: 'Conta e Ordem',
       urf: 'Aeroporto Guarulhos (SP)',
@@ -103,12 +305,43 @@ const SAMPLE_INVOICES = {
       modality: 'Normal',
       sector: 'Cosméticos'
     },
+
+    portOrigin: "JFK Airport (USJFK)",
+    portDestination: "Guarulhos (BRGRU)",
+    vessel: "LATAM CARGO 8064",
+    awb: "957-12345678",
+    etd: "2024-11-12",
+    eta: "2024-11-13",
+
     items: [
-      { id: 1, desc: 'Sérum Vitamina C 30ml', ncm: '33049990', weight: '2', value: '500' },
-      { id: 2, desc: 'Creme Anti-idade 50g', ncm: '33049100', weight: '3', value: '750' }
+      {
+        id: 1,
+        desc: 'Sérum Vitamina C 30ml - SkinCeuticals C E Ferulic',
+        ncm: '33049990',
+        weight: '2',
+        value: '8500',
+        quantity: '50 UN',
+        unitPrice: '170.00',
+        origin: 'US'
+      },
+      {
+        id: 2,
+        desc: 'Creme Anti-idade 50g - La Prairie Platinum Rare',
+        ncm: '33049100',
+        weight: '3',
+        value: '4000',
+        quantity: '8 UN',
+        unitPrice: '500.00',
+        origin: 'CH' // Produto suíço distribuído dos EUA
+      }
     ],
+
     compliance: { anvisa: true, mapa: false, outros: false, lpcoRequested: false },
-    processingTime: 12 // minutos (mais complexo por ANVISA)
+    anuentes: ['ANVISA'],
+    lpcoStatus: 'Pendente - Aguardando registro de produto',
+
+    processingTime: 12,
+    manualTimeEstimate: 45
   }
 };
 
