@@ -1,12 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
-import { 
-  Anchor, 
-  ShieldCheck, 
-  BarChart3, 
-  FileSearch, 
-  AlertTriangle, 
-  Container, 
+import {
+  Anchor,
+  ShieldCheck,
+  BarChart3,
+  FileSearch,
+  AlertTriangle,
+  Container,
   ArrowRight,
   Globe2,
   CheckCircle2,
@@ -23,7 +23,12 @@ import {
   XCircle,
   TrendingDown,
   Home,
-  FileText
+  FileText,
+  Upload,
+  Sparkles,
+  Copy,
+  Zap,
+  Timer
 } from 'lucide-react';
 
 // --- CONSTANTES & CONFIGURAÇÃO ---
@@ -53,6 +58,59 @@ function calcularRiscoNCM(ncm: string, inadimplencia: number): number {
 
   return 0; // NCM válido (8 dígitos) não gera risco específico de formato
 }
+
+// --- DADOS DE EXEMPLO PARA DEMONSTRAÇÃO ---
+const SAMPLE_INVOICES = {
+  electronics: {
+    name: "Invoice_Eletrônicos_Shenzhen.pdf",
+    operation: {
+      type: 'Importação Própria',
+      urf: 'Santos (SP)',
+      country: 'China',
+      modality: 'Normal',
+      sector: 'Outros'
+    },
+    items: [
+      { id: 1, desc: 'Smartphone Android 128GB', ncm: '85171231', weight: '150', value: '15000' },
+      { id: 2, desc: 'Fone Bluetooth TWS', ncm: '85183000', weight: '50', value: '3000' }
+    ],
+    compliance: { anvisa: false, mapa: false, outros: false, lpcoRequested: true },
+    processingTime: 6 // minutos
+  },
+  autoparts: {
+    name: "Invoice_Autopeças_Germany.pdf",
+    operation: {
+      type: 'Importação Própria',
+      urf: 'Paranaguá (PR)',
+      country: 'Alemanha',
+      modality: 'Normal',
+      sector: 'Autopeças'
+    },
+    items: [
+      { id: 1, desc: 'Kit Embreagem Completo', ncm: '87089990', weight: '25', value: '1200' },
+      { id: 2, desc: 'Amortecedor Dianteiro Par', ncm: '87088000', weight: '18', value: '800' },
+      { id: 3, desc: 'Pastilha Freio Cerâmica', ncm: '68138100', weight: '5', value: '350' }
+    ],
+    compliance: { anvisa: false, mapa: false, outros: true, lpcoRequested: true },
+    processingTime: 8 // minutos
+  },
+  cosmetics: {
+    name: "Invoice_Cosméticos_USA.pdf",
+    operation: {
+      type: 'Conta e Ordem',
+      urf: 'Aeroporto Guarulhos (SP)',
+      country: 'Estados Unidos',
+      modality: 'Normal',
+      sector: 'Cosméticos'
+    },
+    items: [
+      { id: 1, desc: 'Sérum Vitamina C 30ml', ncm: '33049990', weight: '2', value: '500' },
+      { id: 2, desc: 'Creme Anti-idade 50g', ncm: '33049100', weight: '3', value: '750' }
+    ],
+    compliance: { anvisa: true, mapa: false, outros: false, lpcoRequested: false },
+    processingTime: 12 // minutos (mais complexo por ANVISA)
+  }
+};
 
 // --- COMPONENTES AUXILIARES ---
 
@@ -848,6 +906,66 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
     inadimplencia: number
   }>(null);
 
+  // --- NOVOS ESTADOS PARA O FLUXO DO COPILOTO ---
+  const [workflowStep, setWorkflowStep] = useState<'upload' | 'processing' | 'form' | 'document'>('upload');
+  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [showDocumentPreview, setShowDocumentPreview] = useState(false);
+  const [timeStats, setTimeStats] = useState({ started: 0, ended: 0, saved: 17 }); // minutos economizados
+
+  // Função para processar invoice (simula extração de dados)
+  const processInvoice = (invoiceKey: keyof typeof SAMPLE_INVOICES) => {
+    setSelectedInvoice(invoiceKey);
+    setWorkflowStep('processing');
+    setProcessingProgress(0);
+    setTimeStats({ ...timeStats, started: Date.now() });
+
+    // Simula progresso de processamento
+    const progressInterval = setInterval(() => {
+      setProcessingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 200);
+
+    // Após 2.5 segundos, preenche o formulário
+    setTimeout(() => {
+      const invoice = SAMPLE_INVOICES[invoiceKey];
+      setOperationData(invoice.operation);
+      setItems(invoice.items);
+      setCompliance(invoice.compliance);
+      setWorkflowStep('form');
+      setTimeStats(prev => ({ ...prev, ended: Date.now(), saved: 25 - invoice.processingTime }));
+    }, 2500);
+  };
+
+  // Função para gerar documento
+  const generateDocument = () => {
+    setShowDocumentPreview(true);
+    setWorkflowStep('document');
+  };
+
+  // Função para voltar ao início
+  const resetWorkflow = () => {
+    setWorkflowStep('upload');
+    setSelectedInvoice(null);
+    setProcessingProgress(0);
+    setShowDocumentPreview(false);
+    setResults(null);
+    setOperationData({
+      type: 'Importação Própria',
+      urf: 'Santos (SP)',
+      country: 'China',
+      modality: 'Normal',
+      sector: 'Outros'
+    });
+    setItems([{ id: 1, desc: '', ncm: '', weight: '', value: '' }]);
+    setCompliance({ anvisa: false, mapa: false, outros: false, lpcoRequested: false });
+  };
+
   const handleItemChange = (id: number, field: string, value: string) => {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
@@ -977,18 +1095,177 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
         </AnimatePresence>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header dinâmico baseado no step */}
           <div className="mb-12 text-center">
              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/10 border border-accent-500/30 text-accent-400 text-xs font-semibold uppercase tracking-wider mb-4">
-               Ambiente de Teste
+               <Sparkles className="w-3 h-3" /> Seu Copiloto de Importação
              </div>
-             <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">Simulação da Plataforma TrueNorth</h1>
+             <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+               {workflowStep === 'upload' && 'Comece enviando sua Invoice'}
+               {workflowStep === 'processing' && 'Seu copiloto está analisando...'}
+               {workflowStep === 'form' && 'Dados extraídos automaticamente'}
+               {workflowStep === 'document' && 'Documento pronto para uso'}
+             </h1>
              <p className="text-slate-400 max-w-2xl mx-auto">
-               Preencha os dados abaixo para estimar riscos, impacto financeiro e oportunidades de redução de inconsistências nas suas importações.
+               {workflowStep === 'upload' && 'Arraste uma invoice ou escolha um exemplo para ver a mágica acontecer.'}
+               {workflowStep === 'processing' && 'Extraindo dados, validando NCMs e verificando anuências...'}
+               {workflowStep === 'form' && `Campos preenchidos automaticamente. Você economizou ${timeStats.saved} minutos!`}
+               {workflowStep === 'document' && 'Copie os dados ou exporte o rascunho para o Portal Único.'}
              </p>
+
+             {/* Indicador de progresso */}
+             {workflowStep !== 'upload' && (
+               <div className="flex items-center justify-center gap-2 mt-6">
+                 <button onClick={resetWorkflow} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
+                   ← Nova operação
+                 </button>
+               </div>
+             )}
+          </div>
+
+          {/* === STEP 1: UPLOAD === */}
+          {workflowStep === 'upload' && (
+            <div className="max-w-3xl mx-auto space-y-8">
+              {/* Área de Upload */}
+              <div className="bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl p-12 text-center hover:border-primary-500/50 transition-colors cursor-pointer group">
+                <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-primary-600/20 transition-colors">
+                  <Upload className="w-10 h-10 text-slate-500 group-hover:text-primary-400 transition-colors" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">Arraste sua Invoice aqui</h3>
+                <p className="text-slate-500 text-sm mb-4">PDF, imagem ou XML • Máx 10MB</p>
+                <div className="text-xs text-slate-600">ou clique para selecionar</div>
+              </div>
+
+              {/* Divisor */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1 h-px bg-slate-800"></div>
+                <span className="text-slate-600 text-sm">ou escolha um exemplo</span>
+                <div className="flex-1 h-px bg-slate-800"></div>
+              </div>
+
+              {/* Exemplos de Invoice */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button
+                  onClick={() => processInvoice('electronics')}
+                  className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left hover:border-primary-500/50 hover:bg-slate-800/50 transition-all group"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-medium text-sm">Eletrônicos</div>
+                      <div className="text-slate-500 text-xs">China → Santos</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-600">2 itens • ~6 min</div>
+                </button>
+
+                <button
+                  onClick={() => processInvoice('autoparts')}
+                  className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left hover:border-accent-500/50 hover:bg-slate-800/50 transition-all group"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-orange-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-medium text-sm">Autopeças</div>
+                      <div className="text-slate-500 text-xs">Alemanha → Paranaguá</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-600">3 itens • ~8 min</div>
+                </button>
+
+                <button
+                  onClick={() => processInvoice('cosmetics')}
+                  className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left hover:border-green-500/50 hover:bg-slate-800/50 transition-all group"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-medium text-sm">Cosméticos</div>
+                      <div className="text-slate-500 text-xs">EUA → Guarulhos</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-600">2 itens • ANVISA • ~12 min</div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* === STEP 2: PROCESSING === */}
+          {workflowStep === 'processing' && (
+            <div className="max-w-xl mx-auto">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
+                {/* Animação do Copiloto */}
+                <div className="relative w-24 h-24 mx-auto mb-8">
+                  <div className="absolute inset-0 bg-primary-600/20 rounded-full animate-ping"></div>
+                  <div className="absolute inset-2 bg-primary-600/30 rounded-full animate-pulse"></div>
+                  <div className="absolute inset-4 bg-slate-800 rounded-full flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-primary-400 animate-pulse" />
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-semibold text-white mb-2">Analisando invoice...</h3>
+
+                {/* Barra de progresso */}
+                <div className="w-full bg-slate-800 rounded-full h-2 mb-4">
+                  <motion.div
+                    className="bg-gradient-to-r from-primary-600 to-accent-500 h-2 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${processingProgress}%` }}
+                    transition={{ duration: 0.2 }}
+                  />
+                </div>
+
+                {/* Status de processamento */}
+                <div className="space-y-2 text-sm text-slate-400">
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 20 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 20 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Lendo documento...
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 50 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 50 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Extraindo dados dos itens...
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 80 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 80 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Validando NCMs e anuências...
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* === STEP 3 & 4: FORM + RESULTS === */}
+          {(workflowStep === 'form' || workflowStep === 'document') && (
+          <>
+          {/* Métricas de Produtividade */}
+          <div className="bg-gradient-to-r from-primary-900/30 to-accent-900/30 border border-primary-800/30 rounded-xl p-4 mb-8">
+            <div className="flex flex-wrap items-center justify-center gap-8 text-center">
+              <div>
+                <div className="text-2xl font-bold text-white">{selectedInvoice ? SAMPLE_INVOICES[selectedInvoice as keyof typeof SAMPLE_INVOICES].processingTime : 8} min</div>
+                <div className="text-xs text-slate-400">Tempo com copiloto</div>
+              </div>
+              <div className="text-slate-600">vs</div>
+              <div>
+                <div className="text-2xl font-bold text-slate-500 line-through">25 min</div>
+                <div className="text-xs text-slate-500">Tempo manual</div>
+              </div>
+              <div className="bg-green-500/10 px-4 py-2 rounded-lg">
+                <div className="text-2xl font-bold text-green-400 flex items-center gap-1">
+                  <Zap className="w-5 h-5" /> {timeStats.saved} min
+                </div>
+                <div className="text-xs text-green-400/70">economizados</div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
-            
+
             {/* Coluna 1: Formulário */}
             <div className="space-y-8">
               {/* Bloco 1: Dados da Operação */}
@@ -1268,11 +1545,119 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
 
           {/* FICHA DE PRODUTO SIMULADA (NOVA SEÇÃO) */}
           {results && (
-             <FichaProdutoSimulada 
-                operation={operationData} 
-                items={items} 
-                inadimplencia={results.inadimplencia} 
+             <FichaProdutoSimulada
+                operation={operationData}
+                items={items}
+                inadimplencia={results.inadimplencia}
              />
+          )}
+
+          {/* Botão Gerar Documento */}
+          {results && !showDocumentPreview && (
+            <div className="mt-8 text-center">
+              <button
+                onClick={generateDocument}
+                className="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 mx-auto"
+              >
+                <FileCheck className="w-5 h-5" /> Gerar Documento Pronto
+              </button>
+              <p className="text-slate-500 text-sm mt-2">Crie o rascunho para usar no Portal Único</p>
+            </div>
+          )}
+
+          {/* Preview do Documento */}
+          {showDocumentPreview && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-8 bg-slate-900 border border-green-800/50 rounded-xl p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <FileCheck className="w-6 h-6 text-green-400" /> Rascunho DUIMP Pronto
+                </h3>
+                <div className="flex gap-2">
+                  <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
+                    <Copy className="w-4 h-4" /> Copiar Campos
+                  </button>
+                  <button className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
+                    <Download className="w-4 h-4" /> Exportar
+                  </button>
+                </div>
+              </div>
+
+              {/* Checklist de Validação */}
+              <div className="bg-slate-950 rounded-lg p-4 mb-6">
+                <h4 className="text-sm font-semibold text-slate-300 mb-3">Checklist de Validação</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <span className="text-slate-300">NCMs validados</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <span className="text-slate-300">Valores conferidos</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <span className="text-slate-300">País de origem OK</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    {compliance.anvisa || compliance.mapa || compliance.outros ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                    )}
+                    <span className="text-slate-300">Anuências verificadas</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resumo do Documento */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="bg-slate-950 rounded-lg p-3">
+                  <div className="text-slate-500 text-xs mb-1">Tipo de Operação</div>
+                  <div className="text-white font-medium">{operationData.type}</div>
+                </div>
+                <div className="bg-slate-950 rounded-lg p-3">
+                  <div className="text-slate-500 text-xs mb-1">URF de Despacho</div>
+                  <div className="text-white font-medium">{operationData.urf}</div>
+                </div>
+                <div className="bg-slate-950 rounded-lg p-3">
+                  <div className="text-slate-500 text-xs mb-1">País de Procedência</div>
+                  <div className="text-white font-medium">{operationData.country}</div>
+                </div>
+              </div>
+
+              {/* Itens */}
+              <div className="mt-4">
+                <h4 className="text-sm font-semibold text-slate-300 mb-2">Itens ({items.length})</h4>
+                <div className="space-y-2">
+                  {items.map((item, idx) => (
+                    <div key={item.id} className="bg-slate-950 rounded-lg p-3 flex items-center justify-between">
+                      <div>
+                        <div className="text-white text-sm font-medium">{item.desc || 'Item ' + (idx + 1)}</div>
+                        <div className="text-slate-500 text-xs">NCM: {item.ncm || 'N/A'} • {item.weight}kg • ${item.value}</div>
+                      </div>
+                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mensagem Final */}
+              <div className="mt-6 bg-green-500/10 border border-green-800/30 rounded-lg p-4 text-center">
+                <p className="text-green-400 font-medium">
+                  ✨ Documento pronto! Economizou {timeStats.saved} minutos nesta operação.
+                </p>
+                <p className="text-slate-500 text-sm mt-1">
+                  Com a TrueNorth, sua equipe pode escalar operações como essa sem gargalos.
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          </>
           )}
 
         </div>
