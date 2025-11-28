@@ -181,6 +181,15 @@ export interface Operation {
   createdAt: string;
 }
 
+// Helper to get auth headers
+function getAuthHeaders(): HeadersInit {
+  const token = getStoredToken();
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` };
+  }
+  return {};
+}
+
 // API Functions
 
 export async function uploadFile(file: File): Promise<{
@@ -189,11 +198,17 @@ export async function uploadFile(file: File): Promise<{
   extractedData?: ExtractedData;
   status?: string;
 }> {
+  const token = getStoredToken();
+  if (!token) {
+    throw new Error('Você precisa estar logado para fazer upload de arquivos');
+  }
+
   const formData = new FormData();
   formData.append('file', file);
 
   const response = await fetch(`${API_URL}/api/upload`, {
     method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
     body: formData,
   });
 
@@ -222,6 +237,7 @@ export async function processDocument(operationId: string): Promise<{
   // Keeping for backwards compatibility
   const response = await fetch(`${API_URL}/api/process/${operationId}`, {
     method: 'POST',
+    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -244,6 +260,7 @@ export async function processDocument(operationId: string): Promise<{
 export async function validateOperation(operationId: string): Promise<ValidationResult & { operationId: string }> {
   const response = await fetch(`${API_URL}/api/validate/${operationId}`, {
     method: 'POST',
+    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -255,7 +272,9 @@ export async function validateOperation(operationId: string): Promise<Validation
 }
 
 export async function getOperation(operationId: string): Promise<Operation> {
-  const response = await fetch(`${API_URL}/api/operations/${operationId}`);
+  const response = await fetch(`${API_URL}/api/operations/${operationId}`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     const error = await response.json();
@@ -282,7 +301,9 @@ export interface OperationsStats {
 }
 
 export async function listOperations(limit = 10, offset = 0): Promise<OperationsResponse> {
-  const response = await fetch(`${API_URL}/api/operations?limit=${limit}&offset=${offset}`);
+  const response = await fetch(`${API_URL}/api/operations?limit=${limit}&offset=${offset}`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     const error = await response.json();
@@ -293,7 +314,9 @@ export async function listOperations(limit = 10, offset = 0): Promise<Operations
 }
 
 export async function getOperationsStats(): Promise<OperationsStats> {
-  const response = await fetch(`${API_URL}/api/operations/stats/summary`);
+  const response = await fetch(`${API_URL}/api/operations/stats/summary`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     const error = await response.json();
@@ -306,6 +329,7 @@ export async function getOperationsStats(): Promise<OperationsStats> {
 export async function deleteOperation(operationId: string): Promise<{ success: boolean; message: string }> {
   const response = await fetch(`${API_URL}/api/operations/${operationId}`, {
     method: 'DELETE',
+    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
