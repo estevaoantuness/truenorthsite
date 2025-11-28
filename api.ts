@@ -122,12 +122,17 @@ export interface ExtractedData {
     unit: string;
     unit_price: number;
     total_price: number;
-    ncm_sugerido: string;
+    ncm_sugerido: string | null;
+    ncm_descricao?: string;
+    ncm_confianca?: 'ALTA' | 'MEDIA' | 'BAIXA';
     peso_kg: number | null;
     origem: string | null;
+    anuentes_necessarios?: string[];
   }>;
   observacoes: string[];
   campos_faltando: string[];
+  setor_detectado?: string;
+  anuentes_operacao?: string[];
 }
 
 export interface ValidationResult {

@@ -1626,20 +1626,24 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
         id: idx + 1,
         desc: item.description || '',
         ncm: item.ncm_sugerido || '',
+        ncmDescricao: item.ncm_descricao || '',
+        ncmConfianca: item.ncm_confianca || '',
         weight: item.peso_kg?.toString() || '',
         value: item.total_price?.toString() || '0',
         quantity: `${item.quantity || 0} ${item.unit || 'UN'}`,
         unitPrice: item.unit_price?.toString() || '0',
-        origin: item.origem || ''
+        origin: item.origem || '',
+        anuentes: item.anuentes_necessarios || []
       }));
 
       // Update form with extracted data
+      const detectedSector = extractedData?.setor_detectado || 'Outros';
       setOperationData({
         type: 'Importação Própria',
         urf: 'Santos (SP)',
         country: extractedData?.supplier?.country || 'Desconhecido',
         modality: 'Normal',
-        sector: 'Outros'
+        sector: detectedSector
       });
       setItems(apiItems.length > 0 ? apiItems : [{ id: 1, desc: '', ncm: '', weight: '', value: '' }]);
 
