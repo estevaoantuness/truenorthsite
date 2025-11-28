@@ -119,7 +119,16 @@ export async function processDocument(operationId: string): Promise<{
     throw new Error(error.error || 'Erro ao processar documento');
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // Map backend field name to frontend expected name
+  const extractedData = data.dadosExtraidos || data.extractedData || { items: [] };
+
+  return {
+    operationId: data.operationId,
+    extractedData,
+    processingTime: data.processingTime || '0s',
+  };
 }
 
 export async function validateOperation(operationId: string): Promise<ValidationResult & { operationId: string }> {

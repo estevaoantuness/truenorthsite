@@ -1182,14 +1182,14 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       setProcessingProgress(100);
 
       // Convert API data to form format
-      const apiItems = extractedData.items.map((item, idx) => ({
+      const apiItems = (extractedData?.items || []).map((item: any, idx: number) => ({
         id: idx + 1,
-        desc: item.description,
+        desc: item.description || '',
         ncm: item.ncm_sugerido || '',
         weight: item.peso_kg?.toString() || '',
-        value: item.total_price.toString(),
-        quantity: `${item.quantity} ${item.unit}`,
-        unitPrice: item.unit_price.toString(),
+        value: item.total_price?.toString() || '0',
+        quantity: `${item.quantity || 0} ${item.unit || 'UN'}`,
+        unitPrice: item.unit_price?.toString() || '0',
         origin: item.origem || ''
       }));
 
@@ -1197,7 +1197,7 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       setOperationData({
         type: 'Importação Própria',
         urf: 'Santos (SP)',
-        country: extractedData.supplier.country || 'Desconhecido',
+        country: extractedData?.supplier?.country || 'Desconhecido',
         modality: 'Normal',
         sector: 'Outros'
       });
