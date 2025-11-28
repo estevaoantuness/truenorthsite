@@ -2083,14 +2083,14 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileInputChange}
-                  accept=".pdf,.xml"
+                  accept=".pdf,.xml,.png,.jpg,.jpeg,.webp,.heic,.heif,image/*"
                   className="hidden"
                 />
                 <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-primary-600/20 transition-colors">
                   <Upload className="w-10 h-10 text-slate-500 group-hover:text-primary-400 transition-colors" />
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">Arraste sua Invoice aqui</h3>
-                <p className="text-slate-500 text-sm mb-4">PDF ou XML • Processado com IA</p>
+                <p className="text-slate-500 text-sm mb-4">PDF, XML ou Imagem • Processado com IA</p>
                 <div className="text-xs text-slate-600">ou clique para selecionar</div>
               </div>
 
