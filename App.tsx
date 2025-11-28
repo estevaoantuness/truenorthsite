@@ -1511,6 +1511,10 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // --- ESTADOS PARA NOVO LAYOUT ---
+  const [showFichaModal, setShowFichaModal] = useState(false);
+  const [errorsExpanded, setErrorsExpanded] = useState(false);
+
   // Verificar token armazenado ao carregar
   useEffect(() => {
     const token = api.getStoredToken();
@@ -2283,227 +2287,135 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
             </div>
           )}
 
-          {/* === STEP 3 & 4: FORM + RESULTS === */}
-          {(workflowStep === 'form' || workflowStep === 'document') && (
-          <>
-          {/* Métricas de Produtividade */}
-          <div className="bg-gradient-to-r from-primary-900/30 to-accent-900/30 border border-primary-800/30 rounded-xl p-4 mb-8">
-            <div className="flex flex-wrap items-center justify-center gap-8 text-center">
-              <div>
-                <div className="text-2xl font-bold text-white">{selectedInvoice ? SAMPLE_INVOICES[selectedInvoice as keyof typeof SAMPLE_INVOICES].processingTime : 8} min</div>
-                <div className="text-xs text-slate-400">Tempo com copiloto</div>
-              </div>
-              <div className="text-slate-600">vs</div>
-              <div>
-                <div className="text-2xl font-bold text-slate-500 line-through">25 min</div>
-                <div className="text-xs text-slate-500">Tempo manual</div>
-              </div>
-              <div className="bg-green-500/10 px-4 py-2 rounded-lg">
-                <div className="text-2xl font-bold text-green-400 flex items-center gap-1">
-                  <Zap className="w-5 h-5" /> {timeStats.saved} min
+          {/* === STEP 3: FORM (Layout Single-Column Limpo) === */}
+          {workflowStep === 'form' && (
+          <div className="max-w-2xl mx-auto">
+            {/* Métricas de Produtividade - Compacto */}
+            <div className="bg-gradient-to-r from-primary-900/30 to-accent-900/30 border border-primary-800/30 rounded-xl p-4 mb-8">
+              <div className="flex flex-wrap items-center justify-center gap-6 text-center">
+                <div>
+                  <div className="text-xl font-bold text-white">{selectedInvoice ? SAMPLE_INVOICES[selectedInvoice as keyof typeof SAMPLE_INVOICES].processingTime : 8} min</div>
+                  <div className="text-xs text-slate-400">Com copiloto</div>
                 </div>
-                <div className="text-xs text-green-400/70">economizados</div>
+                <div className="text-slate-600 text-sm">vs</div>
+                <div>
+                  <div className="text-xl font-bold text-slate-500 line-through">25 min</div>
+                  <div className="text-xs text-slate-500">Manual</div>
+                </div>
+                <div className="bg-green-500/10 px-3 py-1.5 rounded-lg">
+                  <div className="text-xl font-bold text-green-400 flex items-center gap-1">
+                    <Zap className="w-4 h-4" /> {timeStats.saved} min
+                  </div>
+                  <div className="text-xs text-green-400/70">economizados</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* === SEÇÃO DE VALIDAÇÃO API === */}
+          {/* === VALIDAÇÃO API - Colapsável === */}
           {apiValidation && (
-            <div className="mb-8 space-y-4">
-              {/* Header com Risco Geral */}
-              <div className={`border rounded-xl p-4 ${
-                apiValidation.risco_geral === 'CRITICO' ? 'bg-red-900/20 border-red-800/50' :
-                apiValidation.risco_geral === 'ALTO' ? 'bg-orange-900/20 border-orange-800/50' :
-                apiValidation.risco_geral === 'MEDIO' ? 'bg-yellow-900/20 border-yellow-800/50' :
-                'bg-green-900/20 border-green-800/50'
-              }`}>
-                <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="mb-6">
+              {/* Badge de Risco - Clicável para expandir */}
+              <button
+                onClick={() => setErrorsExpanded(!errorsExpanded)}
+                className={`w-full border rounded-xl p-4 transition-all ${
+                  apiValidation.risco_geral === 'CRITICO' ? 'bg-red-900/20 border-red-800/50 hover:border-red-700' :
+                  apiValidation.risco_geral === 'ALTO' ? 'bg-orange-900/20 border-orange-800/50 hover:border-orange-700' :
+                  apiValidation.risco_geral === 'MEDIO' ? 'bg-yellow-900/20 border-yellow-800/50 hover:border-yellow-700' :
+                  'bg-green-900/20 border-green-800/50 hover:border-green-700'
+                }`}
+              >
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       apiValidation.risco_geral === 'CRITICO' ? 'bg-red-600' :
                       apiValidation.risco_geral === 'ALTO' ? 'bg-orange-600' :
                       apiValidation.risco_geral === 'MEDIO' ? 'bg-yellow-600' :
                       'bg-green-600'
                     }`}>
                       {apiValidation.risco_geral === 'CRITICO' || apiValidation.risco_geral === 'ALTO' ? (
-                        <AlertTriangle className="w-6 h-6 text-white" />
+                        <AlertTriangle className="w-5 h-5 text-white" />
                       ) : apiValidation.risco_geral === 'MEDIO' ? (
-                        <AlertCircle className="w-6 h-6 text-white" />
+                        <AlertCircle className="w-5 h-5 text-white" />
                       ) : (
-                        <CheckCircle2 className="w-6 h-6 text-white" />
+                        <CheckCircle2 className="w-5 h-5 text-white" />
                       )}
                     </div>
-                    <div>
-                      <div className="text-xs text-slate-400 uppercase tracking-wider">Resultado da Validação</div>
-                      <div className="text-lg font-bold text-white">
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-white">
                         Risco {apiValidation.risco_geral || 'N/A'}
                       </div>
+                      <div className="text-xs text-slate-400">
+                        {apiValidation.erros?.length || 0} erros • R$ {(apiValidation.custos?.custoTotal || 0).toLocaleString('pt-BR')} em risco
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-red-400">{apiValidation.erros?.length || 0}</div>
-                      <div className="text-xs text-slate-500">Erros</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-400">
-                        {apiValidation.validacoes?.filter((v: any) => v.status === 'ALERTA').length || 0}
-                      </div>
-                      <div className="text-xs text-slate-500">Alertas</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-green-400">
-                        {apiValidation.validacoes?.filter((v: any) => v.status === 'OK').length || 0}
-                      </div>
-                      <div className="text-xs text-slate-500">OK</div>
-                    </div>
-                  </div>
+                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${errorsExpanded ? 'rotate-180' : ''}`} />
                 </div>
-              </div>
+              </button>
 
-              {/* Grid de Erros e Custos */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Lista de Erros Detectados */}
-                {apiValidation.erros && apiValidation.erros.length > 0 && (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                    <h4 className="text-sm font-semibold text-red-400 mb-3 flex items-center gap-2">
-                      <XCircle className="w-4 h-4" /> Erros Detectados ({apiValidation.erros.length})
-                    </h4>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {apiValidation.erros.map((erro: any, idx: number) => (
-                        <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <div className="text-xs text-slate-400">{erro.tipo_erro}</div>
-                              <div className="text-sm text-white font-medium">{erro.campo}</div>
-                              <div className="text-xs text-slate-500 mt-1">{erro.explicacao}</div>
-                            </div>
-                            {erro.custo_estimado && (
-                              <div className="text-right shrink-0">
-                                <div className="text-xs text-slate-400">Custo est.</div>
-                                <div className="text-sm font-bold text-red-400">
-                                  R$ {Number(erro.custo_estimado).toLocaleString('pt-BR')}
+              {/* Detalhes Expandidos */}
+              <AnimatePresence>
+                {errorsExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-3 space-y-3">
+                      {/* Lista de Erros */}
+                      {apiValidation.erros && apiValidation.erros.length > 0 && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                          <h4 className="text-sm font-semibold text-red-400 mb-3 flex items-center gap-2">
+                            <XCircle className="w-4 h-4" /> Erros ({apiValidation.erros.length})
+                          </h4>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {apiValidation.erros.map((erro: any, idx: number) => (
+                              <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1">
+                                    <div className="text-sm text-white font-medium">{erro.campo}</div>
+                                    <div className="text-xs text-slate-500 mt-0.5">{erro.explicacao}</div>
+                                  </div>
+                                  {erro.custo_estimado && (
+                                    <span className="text-sm font-bold text-red-400">
+                                      R$ {Number(erro.custo_estimado).toLocaleString('pt-BR')}
+                                    </span>
+                                  )}
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                          {erro.sugestao_correcao && (
-                            <div className="mt-2 text-xs text-primary-400 bg-primary-900/20 px-2 py-1 rounded">
-                              💡 {erro.sugestao_correcao}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Resumo de Custos da API */}
-                {apiValidation.custos && (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                    <h4 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" /> Impacto Financeiro Calculado
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-400">Multas estimadas</span>
-                        <span className="text-sm font-bold text-white">
-                          R$ {(apiValidation.custos.custoMultas || 0).toLocaleString('pt-BR')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-400">Demurrage estimado</span>
-                        <span className="text-sm font-bold text-white">
-                          R$ {(apiValidation.custos.custoDemurrage || 0).toLocaleString('pt-BR')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-400">Dias de atraso</span>
-                        <span className="text-sm font-bold text-yellow-400">
-                          {apiValidation.custos.diasAtrasoEstimado || 0} dias
-                        </span>
-                      </div>
-                      <div className="pt-3 border-t border-slate-800">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-slate-300">Custo Total Potencial</span>
-                          <span className="text-lg font-bold text-red-400">
-                            R$ {(apiValidation.custos.custoTotal || 0).toLocaleString('pt-BR')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Detalhamento por erro */}
-                      {apiValidation.custos.detalhamento && apiValidation.custos.detalhamento.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-slate-800">
-                          <div className="text-xs text-slate-500 mb-2">Detalhamento:</div>
-                          <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                            {apiValidation.custos.detalhamento.map((det: any, idx: number) => (
-                              <div key={idx} className="flex justify-between items-center text-xs bg-slate-950 px-2 py-1.5 rounded">
-                                <span className="text-slate-400 truncate flex-1">{det.erro}</span>
-                                <span className="text-red-400 ml-2">
-                                  R$ {((det.custoMulta || 0) + (det.custoDemurrage || 0)).toLocaleString('pt-BR')}
-                                </span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
-                    </div>
-                  </div>
-                )}
 
-                {/* Validações - se não houver erros, mostra as validações OK */}
-                {(!apiValidation.erros || apiValidation.erros.length === 0) && apiValidation.validacoes && (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                    <h4 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4" /> Validações Realizadas
-                    </h4>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {apiValidation.validacoes.map((val: any, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          {val.status === 'OK' ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-                          ) : val.status === 'ALERTA' ? (
-                            <AlertCircle className="w-4 h-4 text-yellow-400 shrink-0" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-red-400 shrink-0" />
-                          )}
-                          <span className="text-slate-300">{val.campo}</span>
-                          <span className="text-slate-500 text-xs ml-auto">{val.status}</span>
+                      {/* Impacto Financeiro Resumido */}
+                      {apiValidation.custos && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-400">Custo Total Potencial</span>
+                            <span className="text-lg font-bold text-red-400">
+                              R$ {(apiValidation.custos.custoTotal || 0).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center mt-2 text-xs text-slate-500">
+                            <span>Multas: R$ {(apiValidation.custos.custoMultas || 0).toLocaleString('pt-BR')}</span>
+                            <span>Demurrage: R$ {(apiValidation.custos.custoDemurrage || 0).toLocaleString('pt-BR')}</span>
+                            <span>{apiValidation.custos.diasAtrasoEstimado || 0} dias atraso</span>
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
+                  </motion.div>
                 )}
-
-                {/* Anuentes Necessários */}
-                {apiValidation.anuentes_necessarios && apiValidation.anuentes_necessarios.length > 0 && (
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                    <h4 className="text-sm font-semibold text-accent-400 mb-3 flex items-center gap-2">
-                      <Building2 className="w-4 h-4" /> Anuentes Necessários
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {apiValidation.anuentes_necessarios.map((anuente: string, idx: number) => (
-                        <span
-                          key={idx}
-                          className="bg-accent-600/20 text-accent-400 text-xs px-2.5 py-1 rounded-full border border-accent-600/30"
-                        >
-                          {anuente}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              </AnimatePresence>
             </div>
           )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
-
-            {/* Coluna 1: Formulário */}
-            <div className="space-y-8">
+          {/* Formulário Single-Column */}
+          <div className="space-y-6">
               {/* Bloco 1: Dados da Operação */}
-              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-sm">
+              <div className="bg-slate-900 p-5 rounded-xl border border-slate-800">
                 <h3 className="text-white font-semibold flex items-center gap-2 mb-6 border-b border-slate-800 pb-2">
                   <span className="bg-primary-600 text-xs rounded px-2 py-0.5">1</span> Dados da Operação
                 </h3>
@@ -2748,218 +2660,222 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
                    )}
                  </button>
               </div>
-            </div>
-
-            {/* Coluna 2: Resultados */}
-            <div className="relative">
-               {!results && !calculating && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 border border-slate-800 border-dashed rounded-xl z-10 backdrop-blur-[2px]">
-                   <div className="text-center p-8">
-                     <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                       <FileCheck className="w-8 h-8 text-slate-600" />
-                     </div>
-                     <h3 className="text-lg font-medium text-slate-300">Aguardando dados</h3>
-                     <p className="text-sm text-slate-500 mt-2">Preencha o formulário e clique em "Rodar Validação" para ver os resultados.</p>
-                   </div>
-                 </div>
-               )}
-
-               <div className={`space-y-6 transition-opacity duration-500 ${(results || calculating) ? 'opacity-100' : 'opacity-30 blur-sm'}`}>
-                  {/* Card de Riscos */}
-                  <div className="bg-slate-900 border-l-4 border-l-orange-500 p-6 rounded-r-xl border-y border-r border-slate-800 shadow-md">
-                     <h4 className="text-orange-500 font-bold mb-4 flex items-center gap-2">
-                       <AlertTriangle className="w-5 h-5" /> Riscos Identificados
-                     </h4>
-                     <ul className="space-y-3">
-                       {results?.risks.map((risk, idx) => (
-                         <li key={idx} className="flex items-start gap-3 text-sm text-slate-300 bg-slate-950/50 p-3 rounded">
-                           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0"></span>
-                           {risk}
-                         </li>
-                       )) || (
-                         <li className="text-sm text-slate-500 italic">Aguardando processamento...</li>
-                       )}
-                     </ul>
-                  </div>
-
-                  {/* Card de Impacto Financeiro */}
-                  <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-md relative overflow-hidden">
-                     <div className="absolute top-0 right-0 p-3 opacity-10">
-                        <BarChart3 className="w-24 h-24 text-slate-500" />
-                     </div>
-                     <h4 className="text-white font-bold mb-6 relative z-10">Impacto Financeiro Potencial</h4>
-                     
-                     <div className="mb-6">
-                        <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Custo estimado de erros</span>
-                        <div className="text-2xl sm:text-3xl font-bold text-white mt-1">
-                          {results?.impactRange || "R$ 0,00"}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2">Considerando multas, retificações e custo base de armazenagem.</p>
-                     </div>
-                     
-                     <div className="pt-4 border-t border-slate-800">
-                        <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Impacto Total (Risco)</span>
-                        <div className="text-lg font-semibold text-red-400 mt-1">
-                          {results?.totalImpact || "R$ 0,00"}
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* Card de Economia (Verde) */}
-                  <div className="bg-gradient-to-br from-primary-900/40 to-slate-900 p-6 rounded-xl border border-primary-900/50 shadow-lg relative overflow-hidden group hover:border-primary-600/30 transition-colors">
-                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary-600/20 rounded-full blur-[50px] -mr-10 -mt-10"></div>
-                     
-                     <h4 className="text-white font-bold mb-2 relative z-10 flex items-center gap-2">
-                       <ShieldCheck className="w-5 h-5 text-green-400" /> Custos Evitados com TrueNorth
-                     </h4>
-                     
-                     <p className="text-sm text-slate-400 mb-6 relative z-10">
-                       Com validação pré-DUIMP, nossa IA detecta 98% destes erros antes do registro.
-                     </p>
-
-                     <div className="relative z-10 bg-slate-950/60 p-4 rounded-lg border border-primary-900/30">
-                        <span className="text-xs text-green-400 uppercase font-bold tracking-wider block mb-1">Economia Projetada</span>
-                        <div className="text-3xl font-bold text-white tracking-tight">
-                          {results?.avoided || "R$ 0,00"}
-                        </div>
-                     </div>
-                     
-                     <div className="mt-4 text-center">
-                       <button 
-                         onClick={() => setShowReport(true)}
-                         className="text-xs text-primary-400 hover:text-primary-300 font-medium underline underline-offset-4"
-                       >
-                         Ver relatório detalhado
-                       </button>
-                     </div>
-                  </div>
-               </div>
-            </div>
-
           </div>
 
-          {/* FICHA DE PRODUTO SIMULADA (NOVA SEÇÃO) */}
+          {/* Resultados da Simulação - Compacto */}
           {results && (
-             <FichaProdutoSimulada
-                operation={operationData}
-                items={items}
-                inadimplencia={results.inadimplencia}
-             />
+            <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-white font-semibold flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-green-400" /> Resultado da Simulação
+                </h4>
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="text-xs text-primary-400 hover:text-primary-300 underline underline-offset-2"
+                >
+                  Ver detalhes
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="bg-slate-950 rounded-lg p-3">
+                  <div className="text-xs text-slate-500 mb-1">Riscos</div>
+                  <div className="text-lg font-bold text-orange-400">{results.risks.length}</div>
+                </div>
+                <div className="bg-slate-950 rounded-lg p-3">
+                  <div className="text-xs text-slate-500 mb-1">Impacto</div>
+                  <div className="text-lg font-bold text-red-400">{results.totalImpact}</div>
+                </div>
+                <div className="bg-slate-950 rounded-lg p-3">
+                  <div className="text-xs text-slate-500 mb-1">Economia</div>
+                  <div className="text-lg font-bold text-green-400">{results.avoided}</div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Botão Gerar Documento */}
-          {results && !showDocumentPreview && (
-            <div className="mt-8 text-center">
+          {results && (
+            <div className="mt-6">
               <button
                 onClick={generateDocument}
-                className="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 mx-auto"
+                className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-bold transition-all shadow-lg shadow-green-900/30 flex items-center justify-center gap-2"
               >
                 <FileCheck className="w-5 h-5" /> Gerar Documento Pronto
               </button>
-              <p className="text-slate-500 text-sm mt-2">Crie o rascunho para usar no Portal Único</p>
             </div>
           )}
+          </div>
+          )}
 
-          {/* Preview do Documento */}
-          {showDocumentPreview && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-8 bg-slate-900 border border-green-800/50 rounded-xl p-6"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <FileCheck className="w-6 h-6 text-green-400" /> Rascunho DUIMP Pronto
-                </h3>
-                <div className="flex gap-2">
+          {/* === STEP 4: DOCUMENT (Layout Limpo) === */}
+          {workflowStep === 'document' && (
+            <div className="max-w-2xl mx-auto">
+              {/* Métricas de Produtividade - Compacto */}
+              <div className="bg-gradient-to-r from-green-900/30 to-accent-900/30 border border-green-800/30 rounded-xl p-4 mb-8">
+                <div className="flex flex-wrap items-center justify-center gap-6 text-center">
+                  <div>
+                    <div className="text-xl font-bold text-white">{selectedInvoice ? SAMPLE_INVOICES[selectedInvoice as keyof typeof SAMPLE_INVOICES].processingTime : 8} min</div>
+                    <div className="text-xs text-slate-400">Com copiloto</div>
+                  </div>
+                  <div className="text-slate-600 text-sm">vs</div>
+                  <div>
+                    <div className="text-xl font-bold text-slate-500 line-through">25 min</div>
+                    <div className="text-xs text-slate-500">Manual</div>
+                  </div>
+                  <div className="bg-green-500/10 px-3 py-1.5 rounded-lg">
+                    <div className="text-xl font-bold text-green-400 flex items-center gap-1">
+                      <Zap className="w-4 h-4" /> {timeStats.saved} min
+                    </div>
+                    <div className="text-xs text-green-400/70">economizados</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Principal - Documento Pronto */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900 border border-green-800/50 rounded-xl p-6"
+              >
+                {/* Checklist de Validação */}
+                <div className="bg-slate-950 rounded-lg p-4 mb-6">
+                  <h4 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Checklist de Validação
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      <span className="text-slate-300">NCMs validados</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      <span className="text-slate-300">Valores conferidos</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      <span className="text-slate-300">País de origem OK</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      {selectedAnuentes.length > 0 ? (
+                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                      )}
+                      <span className="text-slate-300">Anuências OK</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resumo da Operação */}
+                <div className="grid grid-cols-3 gap-3 text-sm mb-4">
+                  <div className="bg-slate-950 rounded-lg p-3">
+                    <div className="text-slate-500 text-xs mb-1">Tipo</div>
+                    <div className="text-white font-medium text-xs">{operationData.type}</div>
+                  </div>
+                  <div className="bg-slate-950 rounded-lg p-3">
+                    <div className="text-slate-500 text-xs mb-1">URF</div>
+                    <div className="text-white font-medium text-xs">{operationData.urf}</div>
+                  </div>
+                  <div className="bg-slate-950 rounded-lg p-3">
+                    <div className="text-slate-500 text-xs mb-1">País</div>
+                    <div className="text-white font-medium text-xs">{operationData.country}</div>
+                  </div>
+                </div>
+
+                {/* Itens - Compacto */}
+                <div className="bg-slate-950 rounded-lg p-4 mb-6">
+                  <h4 className="text-sm font-semibold text-slate-300 mb-3">Itens ({items.length})</h4>
+                  <div className="space-y-2">
+                    {items.map((item, idx) => (
+                      <div key={item.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                          <span className="text-white">{item.desc || 'Item ' + (idx + 1)}</span>
+                        </div>
+                        <span className="text-slate-500 text-xs">NCM: {item.ncm || 'N/A'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="flex gap-3">
                   <button
                     onClick={handleCopyFields}
-                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                   >
                     <Copy className="w-4 h-4" /> Copiar Campos
                   </button>
                   <button
                     onClick={handleExportDUIMP}
-                    className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
+                    className="flex-1 bg-primary-600 hover:bg-primary-500 text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                   >
-                    <Download className="w-4 h-4" /> Exportar
+                    <Download className="w-4 h-4" /> Exportar PDF
                   </button>
                 </div>
-              </div>
 
-              {/* Checklist de Validação */}
-              <div className="bg-slate-950 rounded-lg p-4 mb-6">
-                <h4 className="text-sm font-semibold text-slate-300 mb-3">Checklist de Validação</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    <span className="text-slate-300">NCMs validados</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    <span className="text-slate-300">Valores conferidos</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    <span className="text-slate-300">País de origem OK</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    {selectedAnuentes.length > 0 ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                    )}
-                    <span className="text-slate-300">Anuências verificadas</span>
-                  </div>
-                </div>
-              </div>
+                {/* Botão Preview Portal Único */}
+                {results && (
+                  <button
+                    onClick={() => setShowFichaModal(true)}
+                    className="w-full mt-3 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors border border-slate-800"
+                  >
+                    <FileText className="w-4 h-4" /> Ver preview Portal Único
+                  </button>
+                )}
+              </motion.div>
 
-              {/* Resumo do Documento */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="bg-slate-950 rounded-lg p-3">
-                  <div className="text-slate-500 text-xs mb-1">Tipo de Operação</div>
-                  <div className="text-white font-medium">{operationData.type}</div>
-                </div>
-                <div className="bg-slate-950 rounded-lg p-3">
-                  <div className="text-slate-500 text-xs mb-1">URF de Despacho</div>
-                  <div className="text-white font-medium">{operationData.urf}</div>
-                </div>
-                <div className="bg-slate-950 rounded-lg p-3">
-                  <div className="text-slate-500 text-xs mb-1">País de Procedência</div>
-                  <div className="text-white font-medium">{operationData.country}</div>
-                </div>
-              </div>
-
-              {/* Itens */}
-              <div className="mt-4">
-                <h4 className="text-sm font-semibold text-slate-300 mb-2">Itens ({items.length})</h4>
-                <div className="space-y-2">
-                  {items.map((item, idx) => (
-                    <div key={item.id} className="bg-slate-950 rounded-lg p-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-white text-sm font-medium">{item.desc || 'Item ' + (idx + 1)}</div>
-                        <div className="text-slate-500 text-xs">NCM: {item.ncm || 'N/A'} • {item.weight}kg • ${item.value}</div>
-                      </div>
-                      <CheckCircle2 className="w-5 h-5 text-green-400" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Mensagem Final */}
-              <div className="mt-6 bg-green-500/10 border border-green-800/30 rounded-lg p-4 text-center">
-                <p className="text-green-400 font-medium">
-                  ✨ Documento pronto! Economizou {timeStats.saved} minutos nesta operação.
+              {/* Mensagem de Sucesso */}
+              <div className="mt-6 bg-green-500/10 border border-green-800/30 rounded-xl p-6 text-center">
+                <div className="text-4xl mb-2">✨</div>
+                <p className="text-green-400 font-bold text-lg">
+                  Documento pronto!
                 </p>
-                <p className="text-slate-500 text-sm mt-1">
-                  Com a TrueNorth, sua equipe pode escalar operações como essa sem gargalos.
+                <p className="text-slate-400 text-sm mt-1">
+                  Você economizou <span className="text-green-400 font-medium">{timeStats.saved} minutos</span> nesta operação.
                 </p>
               </div>
-            </motion.div>
+            </div>
           )}
 
-          </>
-          )}
+          {/* Modal da Ficha Portal Único */}
+          <AnimatePresence>
+            {showFichaModal && results && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                onClick={() => setShowFichaModal(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  className="bg-slate-900 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-white">Preview Portal Único</h3>
+                    <button
+                      onClick={() => setShowFichaModal(false)}
+                      className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5 text-slate-400" />
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <FichaProdutoSimulada
+                      operation={operationData}
+                      items={items}
+                      inadimplencia={results.inadimplencia}
+                    />
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
       </main>
