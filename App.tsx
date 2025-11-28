@@ -29,11 +29,15 @@ import {
   Sparkles,
   Copy,
   Zap,
-  Timer
+  Timer,
+  AlertCircle,
+  Building2,
+  DollarSign
 } from 'lucide-react';
 
 // --- API CLIENT ---
 import * as api from './api';
+import jsPDF from 'jspdf';
 
 // --- CONSTANTES & CONFIGURAÇÃO ---
 const COLORS = {
@@ -1059,6 +1063,110 @@ const LandingPage = ({ onNavigateToSimulation }: { onNavigateToSimulation: () =>
 // 2. SIMULATION PAGE WRAPPER
 // Modal de Relatório Detalhado
 const ReportModal = ({ results, onClose }: { results: any, onClose: () => void }) => {
+  // Função para gerar e baixar PDF
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    // Header
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.text('TrueNorth - Relatório de Análise', pageWidth / 2, 25, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 35, { align: 'center' });
+
+    y = 55;
+    doc.setTextColor(0, 0, 0);
+
+    // Resumo de Riscos
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Riscos Identificados', 14, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    if (results.risks && results.risks.length > 0) {
+      results.risks.forEach((risk: string) => {
+        doc.setTextColor(220, 38, 38); // red-600
+        doc.text('• ' + risk, 14, y);
+        y += 7;
+      });
+    } else {
+      doc.setTextColor(34, 197, 94); // green-500
+      doc.text('Nenhum risco crítico identificado', 14, y);
+      y += 7;
+    }
+
+    y += 10;
+    doc.setTextColor(0, 0, 0);
+
+    // Detalhamento de Custos
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Detalhamento de Economia', 14, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    const detailItems = [
+      { label: 'Mitigação de Multas', value: results.details?.fines || 'R$ 0' },
+      { label: 'Demurrage Evitado', value: results.details?.demurrage || 'R$ 0' },
+      { label: 'Custos Operacionais', value: results.details?.ops || 'R$ 0' },
+    ];
+
+    detailItems.forEach((item) => {
+      doc.text(item.label + ':', 14, y);
+      doc.text(item.value, 120, y);
+      y += 8;
+    });
+
+    // Linha de total
+    y += 5;
+    doc.setDrawColor(100, 116, 139); // slate-500
+    doc.line(14, y, pageWidth - 14, y);
+    y += 8;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL DE ECONOMIA:', 14, y);
+    doc.setTextColor(34, 197, 94); // green-500
+    doc.text(results.details?.total || 'R$ 0', 120, y);
+
+    y += 15;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    // Impacto Estimado
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Impacto Estimado', 14, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Faixa de Impacto: ' + (results.impactRange || 'N/A'), 14, y);
+    y += 7;
+    doc.text('Total Estimado: ' + (results.totalImpact || 'N/A'), 14, y);
+    y += 7;
+    doc.text('Valor Evitado: ' + (results.avoided || 'N/A'), 14, y);
+
+    // Footer
+    y = doc.internal.pageSize.getHeight() - 20;
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('TrueNorth - Seu Copiloto de Importação', pageWidth / 2, y, { align: 'center' });
+    doc.text('Este relatório é uma estimativa baseada nos dados informados.', pageWidth / 2, y + 5, { align: 'center' });
+
+    // Save PDF
+    doc.save(`truenorth-relatorio-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
@@ -1151,7 +1259,10 @@ const ReportModal = ({ results, onClose }: { results: any, onClose: () => void }
                <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total de Economia</span>
                <div className="text-2xl font-bold text-green-400">{results.details?.total}</div>
              </div>
-             <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-colors">
+             <button
+               onClick={handleDownloadPDF}
+               className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-colors"
+             >
                <Download className="w-4 h-4" /> Baixar PDF
              </button>
           </div>
@@ -1208,6 +1319,33 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- ESTADOS PARA HISTÓRICO DE OPERAÇÕES ---
+  const [operationsHistory, setOperationsHistory] = useState<api.Operation[]>([]);
+  const [operationsStats, setOperationsStats] = useState<api.OperationsStats | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Carrega histórico de operações
+  const loadOperationsHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const [historyRes, statsRes] = await Promise.all([
+        api.listOperations(5, 0),
+        api.getOperationsStats()
+      ]);
+      setOperationsHistory(historyRes.operations);
+      setOperationsStats(statsRes);
+    } catch (error) {
+      console.warn('Erro ao carregar histórico:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Carrega histórico ao montar o componente
+  useEffect(() => {
+    loadOperationsHistory();
+  }, []);
+
   // Função para fazer upload de arquivo real
   const handleFileUpload = async (file: File) => {
     setWorkflowStep('processing');
@@ -1261,6 +1399,9 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       setTimeStats(prev => ({ ...prev, ended: Date.now(), saved: Math.max(17, 25 - processingTime) }));
 
       setWorkflowStep('form');
+
+      // Reload history after successful operation
+      loadOperationsHistory();
     } catch (error: any) {
       console.error('Error processing file:', error);
       alert('Erro ao processar arquivo: ' + error.message);
@@ -1287,6 +1428,129 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+  };
+
+  // Função para copiar dados para clipboard
+  const handleCopyFields = () => {
+    const fieldsText = items.map((item, idx) =>
+      `Item ${idx + 1}:
+- Descrição: ${item.desc}
+- NCM: ${item.ncm}
+- Peso: ${item.weight} kg
+- Valor: USD ${item.value}`
+    ).join('\n\n');
+
+    const fullText = `=== DADOS DA OPERAÇÃO ===
+Tipo: ${operationData.type}
+URF: ${operationData.urf}
+País de Origem: ${operationData.country}
+Modalidade: ${operationData.modality}
+
+=== ITENS ===
+${fieldsText}
+
+=== ANUENTES ===
+${selectedAnuentes.join(', ') || 'Nenhum'}
+LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
+
+    navigator.clipboard.writeText(fullText).then(() => {
+      alert('Dados copiados para a área de transferência!');
+    }).catch(() => {
+      alert('Erro ao copiar dados.');
+    });
+  };
+
+  // Função para exportar DUIMP como PDF
+  const handleExportDUIMP = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    // Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 45, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.text('TrueNorth - Rascunho DUIMP', pageWidth / 2, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Exportado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, pageWidth / 2, 30, { align: 'center' });
+    doc.text(`Operação ID: ${currentOperationId || 'N/A'}`, pageWidth / 2, 38, { align: 'center' });
+
+    y = 55;
+    doc.setTextColor(0, 0, 0);
+
+    // Dados da Operação
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dados da Operação', 14, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Tipo de Operação: ${operationData.type}`, 14, y); y += 6;
+    doc.text(`URF de Despacho: ${operationData.urf}`, 14, y); y += 6;
+    doc.text(`País de Origem: ${operationData.country}`, 14, y); y += 6;
+    doc.text(`Modalidade: ${operationData.modality}`, 14, y); y += 10;
+
+    // Itens
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Itens da Importação', 14, y);
+    y += 8;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    items.forEach((item, idx) => {
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Item ${idx + 1}:`, 14, y);
+      doc.setFont('helvetica', 'normal');
+      y += 5;
+      doc.text(`  NCM: ${item.ncm || 'Não informado'}`, 14, y); y += 5;
+      doc.text(`  Descrição: ${(item.desc || 'Não informado').substring(0, 60)}`, 14, y); y += 5;
+      doc.text(`  Peso: ${item.weight || '0'} kg | Valor: USD ${item.value || '0'}`, 14, y); y += 8;
+    });
+
+    // Anuentes
+    y += 5;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Anuentes e Compliance', 14, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Órgãos Anuentes: ${selectedAnuentes.length > 0 ? selectedAnuentes.join(', ') : 'Nenhum'}`, 14, y);
+    y += 6;
+    doc.text(`LPCO Requerido: ${lpcoRequested ? 'Sim' : 'Não'}`, 14, y);
+
+    // Resultado da Validação API
+    if (apiValidation) {
+      y += 15;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resultado da Validação', 14, y);
+      y += 8;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Risco Geral: ${apiValidation.risco_geral || 'N/A'}`, 14, y);
+      y += 6;
+      doc.text(`Custo Total de Erros: R$ ${(apiValidation.custos?.custoTotal || 0).toLocaleString('pt-BR')}`, 14, y);
+      y += 6;
+      doc.text(`Dias de Atraso Estimado: ${apiValidation.custos?.diasAtrasoEstimado || 0} dias`, 14, y);
+    }
+
+    // Footer
+    y = doc.internal.pageSize.getHeight() - 15;
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('TrueNorth - Documento gerado automaticamente. Verifique os dados antes de submeter ao SISCOMEX.', pageWidth / 2, y, { align: 'center' });
+
+    doc.save(`duimp-rascunho-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Função para processar invoice (simula extração de dados)
@@ -1595,6 +1859,101 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
                   <div className="text-xs text-slate-600">2 itens • ANVISA • ~12 min</div>
                 </button>
               </div>
+
+              {/* Histórico de Operações */}
+              {operationsHistory.length > 0 && (
+                <div className="mt-12">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="flex-1 h-px bg-slate-800"></div>
+                    <span className="text-slate-600 text-sm flex items-center gap-2">
+                      <Clock className="w-4 h-4" /> Últimas operações
+                    </span>
+                    <div className="flex-1 h-px bg-slate-800"></div>
+                  </div>
+
+                  {/* Estatísticas Rápidas */}
+                  {operationsStats && (
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-white">{operationsStats.totalOperations}</div>
+                        <div className="text-xs text-slate-500">Operações</div>
+                      </div>
+                      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-green-400">
+                          R$ {(operationsStats.totalCostsAvoided || 0).toLocaleString('pt-BR')}
+                        </div>
+                        <div className="text-xs text-slate-500">Custos evitados</div>
+                      </div>
+                      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-accent-400">{operationsStats.totalTimeSavedMin || 0} min</div>
+                        <div className="text-xs text-slate-500">Tempo economizado</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista de Operações */}
+                  <div className="space-y-2">
+                    {operationsHistory.map((op) => (
+                      <div
+                        key={op.id}
+                        className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex items-center justify-between hover:border-slate-700 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                            op.status === 'VALIDADO' ? 'bg-green-500/10' :
+                            op.status === 'COM_ERROS' ? 'bg-orange-500/10' :
+                            'bg-slate-800'
+                          }`}>
+                            {op.status === 'VALIDADO' ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-400" />
+                            ) : op.status === 'COM_ERROS' ? (
+                              <AlertTriangle className="w-5 h-5 text-orange-400" />
+                            ) : (
+                              <FileText className="w-5 h-5 text-slate-400" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-white text-sm font-medium">
+                              {op.arquivoNome || 'Operação sem nome'}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {new Date(op.createdAt).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                              {op.arquivoTipo && ` • ${op.arquivoTipo}`}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {op.custoTotalErros && Number(op.custoTotalErros) > 0 ? (
+                            <div className="text-orange-400 text-sm font-medium">
+                              R$ {Number(op.custoTotalErros).toLocaleString('pt-BR')}
+                            </div>
+                          ) : (
+                            <div className="text-green-400 text-sm font-medium flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> OK
+                            </div>
+                          )}
+                          {op.tempoEconomizadoMin && (
+                            <div className="text-xs text-slate-500">
+                              {op.tempoEconomizadoMin} min economizados
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {loadingHistory && (
+                    <div className="text-center py-4 text-slate-500 text-sm">
+                      Carregando histórico...
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1665,6 +2024,197 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
               </div>
             </div>
           </div>
+
+          {/* === SEÇÃO DE VALIDAÇÃO API === */}
+          {apiValidation && (
+            <div className="mb-8 space-y-4">
+              {/* Header com Risco Geral */}
+              <div className={`border rounded-xl p-4 ${
+                apiValidation.risco_geral === 'CRITICO' ? 'bg-red-900/20 border-red-800/50' :
+                apiValidation.risco_geral === 'ALTO' ? 'bg-orange-900/20 border-orange-800/50' :
+                apiValidation.risco_geral === 'MEDIO' ? 'bg-yellow-900/20 border-yellow-800/50' :
+                'bg-green-900/20 border-green-800/50'
+              }`}>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                      apiValidation.risco_geral === 'CRITICO' ? 'bg-red-600' :
+                      apiValidation.risco_geral === 'ALTO' ? 'bg-orange-600' :
+                      apiValidation.risco_geral === 'MEDIO' ? 'bg-yellow-600' :
+                      'bg-green-600'
+                    }`}>
+                      {apiValidation.risco_geral === 'CRITICO' || apiValidation.risco_geral === 'ALTO' ? (
+                        <AlertTriangle className="w-6 h-6 text-white" />
+                      ) : apiValidation.risco_geral === 'MEDIO' ? (
+                        <AlertCircle className="w-6 h-6 text-white" />
+                      ) : (
+                        <CheckCircle2 className="w-6 h-6 text-white" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-400 uppercase tracking-wider">Resultado da Validação</div>
+                      <div className="text-lg font-bold text-white">
+                        Risco {apiValidation.risco_geral || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-red-400">{apiValidation.erros?.length || 0}</div>
+                      <div className="text-xs text-slate-500">Erros</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-yellow-400">
+                        {apiValidation.validacoes?.filter((v: any) => v.status === 'ALERTA').length || 0}
+                      </div>
+                      <div className="text-xs text-slate-500">Alertas</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">
+                        {apiValidation.validacoes?.filter((v: any) => v.status === 'OK').length || 0}
+                      </div>
+                      <div className="text-xs text-slate-500">OK</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid de Erros e Custos */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Lista de Erros Detectados */}
+                {apiValidation.erros && apiValidation.erros.length > 0 && (
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-red-400 mb-3 flex items-center gap-2">
+                      <XCircle className="w-4 h-4" /> Erros Detectados ({apiValidation.erros.length})
+                    </h4>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {apiValidation.erros.map((erro: any, idx: number) => (
+                        <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="text-xs text-slate-400">{erro.tipo_erro}</div>
+                              <div className="text-sm text-white font-medium">{erro.campo}</div>
+                              <div className="text-xs text-slate-500 mt-1">{erro.explicacao}</div>
+                            </div>
+                            {erro.custo_estimado && (
+                              <div className="text-right shrink-0">
+                                <div className="text-xs text-slate-400">Custo est.</div>
+                                <div className="text-sm font-bold text-red-400">
+                                  R$ {Number(erro.custo_estimado).toLocaleString('pt-BR')}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {erro.sugestao_correcao && (
+                            <div className="mt-2 text-xs text-primary-400 bg-primary-900/20 px-2 py-1 rounded">
+                              💡 {erro.sugestao_correcao}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Resumo de Custos da API */}
+                {apiValidation.custos && (
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" /> Impacto Financeiro Calculado
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-400">Multas estimadas</span>
+                        <span className="text-sm font-bold text-white">
+                          R$ {(apiValidation.custos.custoMultas || 0).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-400">Demurrage estimado</span>
+                        <span className="text-sm font-bold text-white">
+                          R$ {(apiValidation.custos.custoDemurrage || 0).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-400">Dias de atraso</span>
+                        <span className="text-sm font-bold text-yellow-400">
+                          {apiValidation.custos.diasAtrasoEstimado || 0} dias
+                        </span>
+                      </div>
+                      <div className="pt-3 border-t border-slate-800">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-slate-300">Custo Total Potencial</span>
+                          <span className="text-lg font-bold text-red-400">
+                            R$ {(apiValidation.custos.custoTotal || 0).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Detalhamento por erro */}
+                      {apiValidation.custos.detalhamento && apiValidation.custos.detalhamento.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-800">
+                          <div className="text-xs text-slate-500 mb-2">Detalhamento:</div>
+                          <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                            {apiValidation.custos.detalhamento.map((det: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center text-xs bg-slate-950 px-2 py-1.5 rounded">
+                                <span className="text-slate-400 truncate flex-1">{det.erro}</span>
+                                <span className="text-red-400 ml-2">
+                                  R$ {((det.custoMulta || 0) + (det.custoDemurrage || 0)).toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Validações - se não houver erros, mostra as validações OK */}
+                {(!apiValidation.erros || apiValidation.erros.length === 0) && apiValidation.validacoes && (
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" /> Validações Realizadas
+                    </h4>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {apiValidation.validacoes.map((val: any, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm">
+                          {val.status === 'OK' ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                          ) : val.status === 'ALERTA' ? (
+                            <AlertCircle className="w-4 h-4 text-yellow-400 shrink-0" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                          )}
+                          <span className="text-slate-300">{val.campo}</span>
+                          <span className="text-slate-500 text-xs ml-auto">{val.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Anuentes Necessários */}
+                {apiValidation.anuentes_necessarios && apiValidation.anuentes_necessarios.length > 0 && (
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-accent-400 mb-3 flex items-center gap-2">
+                      <Building2 className="w-4 h-4" /> Anuentes Necessários
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {apiValidation.anuentes_necessarios.map((anuente: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="bg-accent-600/20 text-accent-400 text-xs px-2.5 py-1 rounded-full border border-accent-600/30"
+                        >
+                          {anuente}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
 
@@ -2040,10 +2590,16 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
                   <FileCheck className="w-6 h-6 text-green-400" /> Rascunho DUIMP Pronto
                 </h3>
                 <div className="flex gap-2">
-                  <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
+                  <button
+                    onClick={handleCopyFields}
+                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
+                  >
                     <Copy className="w-4 h-4" /> Copiar Campos
                   </button>
-                  <button className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
+                  <button
+                    onClick={handleExportDUIMP}
+                    className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
+                  >
                     <Download className="w-4 h-4" /> Exportar
                   </button>
                 </div>

@@ -155,12 +155,52 @@ export async function getOperation(operationId: string): Promise<Operation> {
   return response.json();
 }
 
-export async function listOperations(): Promise<Operation[]> {
-  const response = await fetch(`${API_URL}/api/operations`);
+export interface OperationsResponse {
+  operations: Operation[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface OperationsStats {
+  totalOperations: number;
+  operationsWithErrors: number;
+  operationsValidated: number;
+  totalCostsAvoided: number;
+  totalTimeSavedMin: number;
+  averageTimeSavedMin: number;
+}
+
+export async function listOperations(limit = 10, offset = 0): Promise<OperationsResponse> {
+  const response = await fetch(`${API_URL}/api/operations?limit=${limit}&offset=${offset}`);
 
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Erro ao listar operações');
+  }
+
+  return response.json();
+}
+
+export async function getOperationsStats(): Promise<OperationsStats> {
+  const response = await fetch(`${API_URL}/api/operations/stats/summary`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao buscar estatísticas');
+  }
+
+  return response.json();
+}
+
+export async function deleteOperation(operationId: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_URL}/api/operations/${operationId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao excluir operação');
   }
 
   return response.json();
