@@ -17,6 +17,7 @@ import {
   Plus,
   Trash2,
   ArrowDown,
+  ChevronDown,
   Ship,
   FileCheck,
   Download,
@@ -43,6 +44,60 @@ const COLORS = {
   textMain: 'white',
   textMuted: 'slate-400'
 };
+
+// --- LISTA DE PAÍSES QUE MAIS EXPORTAM PARA O BRASIL ---
+const PAISES_IMPORTADORES = [
+  'China',
+  'Estados Unidos',
+  'Alemanha',
+  'Argentina',
+  'Índia',
+  'Coreia do Sul',
+  'Itália',
+  'Japão',
+  'França',
+  'México',
+  'Reino Unido',
+  'Chile',
+  'Espanha',
+  'Rússia',
+  'Países Baixos',
+  'Canadá',
+  'Paraguai',
+  'Taiwan',
+  'Suíça',
+  'Bélgica',
+  'Colômbia',
+  'Vietnã',
+  'Tailândia',
+  'Malásia',
+  'Arábia Saudita',
+  'Nigéria',
+  'Indonésia',
+  'Portugal',
+  'Peru',
+  'Uruguai'
+];
+
+// --- LISTA DE ÓRGÃOS ANUENTES ---
+const LISTA_ANUENTES = [
+  'ANVISA',
+  'ANATEL',
+  'ANM',
+  'ANEEL',
+  'ANP',
+  'CNEN',
+  'CNPq',
+  'COMEXE',
+  'DECEX',
+  'DPF',
+  'ECT',
+  'IBAMA',
+  'INMETRO',
+  'MAPA',
+  'MCTI',
+  'SUFRAMA'
+];
 
 // --- FUNÇÕES AUXILIARES DE NEGÓCIO ---
 
@@ -1119,12 +1174,10 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
     { id: 1, desc: '', ncm: '', weight: '', value: '' }
   ]);
 
-  const [compliance, setCompliance] = useState({
-    anvisa: false,
-    mapa: false,
-    outros: false,
-    lpcoRequested: false
-  });
+  // Estado de compliance usando novo sistema de multi-select
+  const [selectedAnuentes, setSelectedAnuentes] = useState<string[]>([]);
+  const [lpcoRequested, setLpcoRequested] = useState(false);
+  const [anuentsDropdownOpen, setAnuentsDropdownOpen] = useState(false);
 
   const [calculating, setCalculating] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -1259,7 +1312,16 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       const invoice = SAMPLE_INVOICES[invoiceKey];
       setOperationData(invoice.operation);
       setItems(invoice.items);
-      setCompliance(invoice.compliance);
+      // Usar campo anuentes se disponível, senão converter do compliance antigo
+      if (invoice.anuentes) {
+        setSelectedAnuentes(invoice.anuentes);
+      } else {
+        const anuentes: string[] = [];
+        if (invoice.compliance.anvisa) anuentes.push('ANVISA');
+        if (invoice.compliance.mapa) anuentes.push('MAPA');
+        setSelectedAnuentes(anuentes);
+      }
+      setLpcoRequested(invoice.compliance.lpcoRequested);
       setWorkflowStep('form');
       setTimeStats(prev => ({ ...prev, ended: Date.now(), saved: 25 - invoice.processingTime }));
     }, 2500);
@@ -1286,7 +1348,8 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       sector: 'Outros'
     });
     setItems([{ id: 1, desc: '', ncm: '', weight: '', value: '' }]);
-    setCompliance({ anvisa: false, mapa: false, outros: false, lpcoRequested: false });
+    setSelectedAnuentes([]);
+    setLpcoRequested(false);
     // Reset API states
     setCurrentOperationId(null);
     setApiValidation(null);
@@ -1353,15 +1416,15 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       }
 
       const requiresAnuente = ['Alimentos/Bebidas', 'Cosméticos', 'Químico'].includes(operationData.sector);
-      const hasAnuenteChecked = compliance.anvisa || compliance.mapa || compliance.outros;
-      
+      const hasAnuenteChecked = selectedAnuentes.length > 0;
+
       if (requiresAnuente && !hasAnuenteChecked) {
         risks.push(`Setor ${operationData.sector} geralmente exige LPCO (Anuente) não assinalado.`);
         impactLow += 2000;
         impactHigh += 5000;
       }
 
-      if (requiresAnuente && !compliance.lpcoRequested) {
+      if (requiresAnuente && !lpcoRequested) {
         risks.push("LPCO não solicitado previamente. Alto risco de retenção de carga (Demurrage).");
         impactLow += 10000;
         impactHigh += 40000;
@@ -1641,15 +1704,14 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
                    </div>
                    <div>
                      <label className="block text-xs text-slate-400 mb-1.5">País de Procedência</label>
-                     <select 
+                     <select
                         className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
                         value={operationData.country}
                         onChange={(e) => setOperationData({...operationData, country: e.target.value})}
                      >
-                       <option>China</option>
-                       <option>Estados Unidos</option>
-                       <option>Alemanha</option>
-                       <option>Argentina</option>
+                       {PAISES_IMPORTADORES.map(pais => (
+                         <option key={pais} value={pais}>{pais}</option>
+                       ))}
                      </select>
                    </div>
                    <div>
@@ -1739,36 +1801,98 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
                     <span className="bg-primary-600 text-xs rounded px-2 py-0.5">3</span> Compliance (Simulação)
                  </h3>
                  
-                 <div className="flex flex-col sm:flex-row gap-6 mb-6">
+                 <div className="flex flex-col gap-4 mb-6">
+                   {/* Dropdown Multi-Select para Anuentes */}
                    <div className="flex-1">
-                      <span className="block text-xs text-slate-400 mb-2">Exige anuência?</span>
-                      <div className="flex flex-col gap-2">
-                        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-                          <input type="checkbox" checked={compliance.anvisa} onChange={e => setCompliance({...compliance, anvisa: e.target.checked})} className="rounded bg-slate-900 border-slate-700 text-primary-600 focus:ring-offset-slate-900" />
-                          ANVISA
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-                          <input type="checkbox" checked={compliance.mapa} onChange={e => setCompliance({...compliance, mapa: e.target.checked})} className="rounded bg-slate-900 border-slate-700 text-primary-600 focus:ring-offset-slate-900" />
-                          MAPA
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-                          <input type="checkbox" checked={compliance.outros} onChange={e => setCompliance({...compliance, outros: e.target.checked})} className="rounded bg-slate-900 border-slate-700 text-primary-600 focus:ring-offset-slate-900" />
-                          Outros
-                        </label>
+                      <span className="block text-xs text-slate-400 mb-2">Órgãos Anuentes Necessários</span>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setAnuentsDropdownOpen(!anuentsDropdownOpen)}
+                          className="w-full bg-slate-950 border border-slate-700 text-left px-3 py-2.5 rounded-lg text-sm text-slate-300 flex items-center justify-between hover:border-slate-600 transition-colors"
+                        >
+                          <span className={selectedAnuentes.length === 0 ? 'text-slate-500' : 'text-slate-300'}>
+                            {selectedAnuentes.length === 0
+                              ? 'Selecione os anuentes...'
+                              : `${selectedAnuentes.length} órgão(s) selecionado(s)`}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${anuentsDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {anuentsDropdownOpen && (
+                          <div className="absolute z-50 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                            <div className="p-2 border-b border-slate-700">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAnuentes([])}
+                                className="text-xs text-slate-400 hover:text-slate-300"
+                              >
+                                Limpar seleção
+                              </button>
+                            </div>
+                            <div className="p-1">
+                              {LISTA_ANUENTES.map(anuente => (
+                                <label
+                                  key={anuente}
+                                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-800 rounded cursor-pointer transition-colors"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedAnuentes.includes(anuente)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedAnuentes([...selectedAnuentes, anuente]);
+                                      } else {
+                                        setSelectedAnuentes(selectedAnuentes.filter(a => a !== anuente));
+                                      }
+                                    }}
+                                    className="rounded bg-slate-900 border-slate-600 text-primary-600 focus:ring-primary-600 focus:ring-offset-slate-900"
+                                  />
+                                  <span className="text-sm text-slate-300">{anuente}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Tags dos anuentes selecionados */}
+                      {selectedAnuentes.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {selectedAnuentes.map(anuente => (
+                            <span
+                              key={anuente}
+                              className="inline-flex items-center gap-1 bg-primary-600/20 text-primary-400 text-xs px-2 py-1 rounded-full border border-primary-600/30"
+                            >
+                              {anuente}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAnuentes(selectedAnuentes.filter(a => a !== anuente))}
+                                className="hover:text-primary-300"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                    </div>
+
+                   {/* LPCO */}
                    <div className="flex-1">
                       <span className="block text-xs text-slate-400 mb-2">LPCO já solicitado?</span>
                       <div className="flex items-center gap-4">
-                         <button 
-                           onClick={() => setCompliance({...compliance, lpcoRequested: true})}
-                           className={`flex-1 py-2 px-3 rounded text-sm font-medium border transition-colors ${compliance.lpcoRequested ? 'bg-primary-600/20 border-primary-600 text-primary-400' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                         <button
+                           type="button"
+                           onClick={() => setLpcoRequested(true)}
+                           className={`flex-1 py-2 px-3 rounded text-sm font-medium border transition-colors ${lpcoRequested ? 'bg-primary-600/20 border-primary-600 text-primary-400' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
                          >
                            Sim
                          </button>
-                         <button 
-                           onClick={() => setCompliance({...compliance, lpcoRequested: false})}
-                           className={`flex-1 py-2 px-3 rounded text-sm font-medium border transition-colors ${!compliance.lpcoRequested ? 'bg-slate-800 border-slate-600 text-white' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                         <button
+                           type="button"
+                           onClick={() => setLpcoRequested(false)}
+                           className={`flex-1 py-2 px-3 rounded text-sm font-medium border transition-colors ${!lpcoRequested ? 'bg-slate-800 border-slate-600 text-white' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
                          >
                            Não
                          </button>
@@ -1942,7 +2066,7 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
                     <span className="text-slate-300">País de origem OK</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    {compliance.anvisa || compliance.mapa || compliance.outros ? (
+                    {selectedAnuentes.length > 0 ? (
                       <CheckCircle2 className="w-4 h-4 text-green-400" />
                     ) : (
                       <AlertTriangle className="w-4 h-4 text-yellow-400" />
