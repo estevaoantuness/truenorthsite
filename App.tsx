@@ -1596,6 +1596,12 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
 
   // Função para fazer upload de arquivo real
   const handleFileUpload = async (file: File) => {
+    // Verificar se usuário está logado antes de fazer upload
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+
     setWorkflowStep('processing');
     setProcessingProgress(0);
     setTimeStats({ ...timeStats, started: Date.now() });
@@ -1647,7 +1653,12 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       loadOperationsHistory();
     } catch (error: any) {
       console.error('Error processing file:', error);
-      alert('Erro ao processar arquivo: ' + error.message);
+      // Se erro de autenticação, mostrar modal de login
+      if (error.message.includes('Autenticação') || error.message.includes('logado') || error.message.includes('Token')) {
+        setShowAuthModal(true);
+      } else {
+        alert('Erro ao processar arquivo: ' + error.message);
+      }
       setWorkflowStep('upload');
     }
   };
