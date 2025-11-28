@@ -183,7 +183,12 @@ export interface Operation {
 
 // API Functions
 
-export async function uploadFile(file: File): Promise<{ operationId: string; fileName: string }> {
+export async function uploadFile(file: File): Promise<{
+  operationId: string;
+  fileName: string;
+  extractedData?: ExtractedData;
+  status?: string;
+}> {
   const formData = new FormData();
   formData.append('file', file);
 
@@ -197,7 +202,15 @@ export async function uploadFile(file: File): Promise<{ operationId: string; fil
     throw new Error(error.error || 'Erro ao fazer upload');
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // API now processes in memory and returns extracted data directly
+  return {
+    operationId: data.operationId,
+    fileName: data.file?.name || file.name,
+    extractedData: data.dadosExtraidos,
+    status: data.status,
+  };
 }
 
 export async function processDocument(operationId: string): Promise<{
@@ -205,6 +218,8 @@ export async function processDocument(operationId: string): Promise<{
   extractedData: ExtractedData;
   processingTime: string;
 }> {
+  // This endpoint is now optional - upload already extracts data
+  // Keeping for backwards compatibility
   const response = await fetch(`${API_URL}/api/process/${operationId}`, {
     method: 'POST',
   });

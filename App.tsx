@@ -1603,18 +1603,13 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
     setSelectedInvoice(null); // Not using sample invoice
 
     try {
-      // Step 1: Upload (0-30%)
+      // Step 1: Upload & Process (0-70%) - Now done in single call
       setProcessingProgress(10);
-      const { operationId } = await api.uploadFile(file);
+      const { operationId, extractedData } = await api.uploadFile(file);
       setCurrentOperationId(operationId);
-      setProcessingProgress(30);
-
-      // Step 2: Process with Gemini (30-70%)
-      setProcessingProgress(40);
-      const { extractedData } = await api.processDocument(operationId);
       setProcessingProgress(70);
 
-      // Step 3: Validate (70-100%)
+      // Step 2: Validate (70-100%)
       setProcessingProgress(80);
       const validation = await api.validateOperation(operationId);
       setApiValidation(validation);
