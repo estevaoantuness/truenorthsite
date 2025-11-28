@@ -31,6 +31,9 @@ import {
   Timer
 } from 'lucide-react';
 
+// --- API CLIENT ---
+import * as api from './api';
+
 // --- CONSTANTES & CONFIGURAÇÃO ---
 const COLORS = {
   bg: 'slate-950', // #020817
@@ -1146,6 +1149,93 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
   const [showDocumentPreview, setShowDocumentPreview] = useState(false);
   const [timeStats, setTimeStats] = useState({ started: 0, ended: 0, saved: 17 }); // minutos economizados
 
+  // --- ESTADOS PARA INTEGRAÇÃO COM API REAL ---
+  const [currentOperationId, setCurrentOperationId] = useState<string | null>(null);
+  const [apiValidation, setApiValidation] = useState<api.ValidationResult | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Função para fazer upload de arquivo real
+  const handleFileUpload = async (file: File) => {
+    setWorkflowStep('processing');
+    setProcessingProgress(0);
+    setTimeStats({ ...timeStats, started: Date.now() });
+    setUploadedFileName(file.name);
+    setSelectedInvoice(null); // Not using sample invoice
+
+    try {
+      // Step 1: Upload (0-30%)
+      setProcessingProgress(10);
+      const { operationId } = await api.uploadFile(file);
+      setCurrentOperationId(operationId);
+      setProcessingProgress(30);
+
+      // Step 2: Process with Gemini (30-70%)
+      setProcessingProgress(40);
+      const { extractedData } = await api.processDocument(operationId);
+      setProcessingProgress(70);
+
+      // Step 3: Validate (70-100%)
+      setProcessingProgress(80);
+      const validation = await api.validateOperation(operationId);
+      setApiValidation(validation);
+      setProcessingProgress(100);
+
+      // Convert API data to form format
+      const apiItems = extractedData.items.map((item, idx) => ({
+        id: idx + 1,
+        desc: item.description,
+        ncm: item.ncm_sugerido || '',
+        weight: item.peso_kg?.toString() || '',
+        value: item.total_price.toString(),
+        quantity: `${item.quantity} ${item.unit}`,
+        unitPrice: item.unit_price.toString(),
+        origin: item.origem || ''
+      }));
+
+      // Update form with extracted data
+      setOperationData({
+        type: 'Importação Própria',
+        urf: 'Santos (SP)',
+        country: extractedData.supplier.country || 'Desconhecido',
+        modality: 'Normal',
+        sector: 'Outros'
+      });
+      setItems(apiItems.length > 0 ? apiItems : [{ id: 1, desc: '', ncm: '', weight: '', value: '' }]);
+
+      // Calculate time saved
+      const processingTime = Math.round((Date.now() - timeStats.started) / 1000 / 60);
+      setTimeStats(prev => ({ ...prev, ended: Date.now(), saved: Math.max(17, 25 - processingTime) }));
+
+      setWorkflowStep('form');
+    } catch (error: any) {
+      console.error('Error processing file:', error);
+      alert('Erro ao processar arquivo: ' + error.message);
+      setWorkflowStep('upload');
+    }
+  };
+
+  // Handle file input change
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  // Handle drag and drop
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
   // Função para processar invoice (simula extração de dados)
   const processInvoice = (invoiceKey: keyof typeof SAMPLE_INVOICES) => {
     setSelectedInvoice(invoiceKey);
@@ -1197,6 +1287,10 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
     });
     setItems([{ id: 1, desc: '', ncm: '', weight: '', value: '' }]);
     setCompliance({ anvisa: false, mapa: false, outros: false, lpcoRequested: false });
+    // Reset API states
+    setCurrentOperationId(null);
+    setApiValidation(null);
+    setUploadedFileName(null);
   };
 
   const handleItemChange = (id: number, field: string, value: string) => {
@@ -1360,12 +1454,24 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
           {workflowStep === 'upload' && (
             <div className="max-w-3xl mx-auto space-y-8">
               {/* Área de Upload */}
-              <div className="bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl p-12 text-center hover:border-primary-500/50 transition-colors cursor-pointer group">
+              <div
+                className="bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl p-12 text-center hover:border-primary-500/50 transition-colors cursor-pointer group"
+                onClick={() => fileInputRef.current?.click()}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileInputChange}
+                  accept=".pdf,.xml"
+                  className="hidden"
+                />
                 <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-primary-600/20 transition-colors">
                   <Upload className="w-10 h-10 text-slate-500 group-hover:text-primary-400 transition-colors" />
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">Arraste sua Invoice aqui</h3>
-                <p className="text-slate-500 text-sm mb-4">PDF, imagem ou XML • Máx 10MB</p>
+                <p className="text-slate-500 text-sm mb-4">PDF ou XML • Processado com IA</p>
                 <div className="text-xs text-slate-600">ou clique para selecionar</div>
               </div>
 
