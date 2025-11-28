@@ -3,6 +3,101 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+// Auth Types
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  createdAt?: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+}
+
+// Auth Functions
+export async function register(email: string, password: string, confirmPassword: string, name?: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, confirmPassword, name }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao criar conta');
+  }
+
+  return response.json();
+}
+
+export async function login(email: string, password: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao fazer login');
+  }
+
+  return response.json();
+}
+
+export async function getCurrentUser(token: string): Promise<{ user: User }> {
+  const response = await fetch(`${API_URL}/api/auth/me`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao verificar autenticação');
+  }
+
+  return response.json();
+}
+
+// Auth helpers
+export function getStoredToken(): string | null {
+  return localStorage.getItem('truenorth_token');
+}
+
+export function setStoredToken(token: string): void {
+  localStorage.setItem('truenorth_token', token);
+}
+
+export function removeStoredToken(): void {
+  localStorage.removeItem('truenorth_token');
+}
+
+export function getStoredUser(): User | null {
+  const userStr = localStorage.getItem('truenorth_user');
+  if (userStr) {
+    try {
+      return JSON.parse(userStr);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export function setStoredUser(user: User): void {
+  localStorage.setItem('truenorth_user', JSON.stringify(user));
+}
+
+export function removeStoredUser(): void {
+  localStorage.removeItem('truenorth_user');
+}
+
+export function logout(): void {
+  removeStoredToken();
+  removeStoredUser();
+}
+
 // Tipos
 export interface ExtractedData {
   invoice_number: string;
