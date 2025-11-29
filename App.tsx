@@ -1514,6 +1514,7 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
   // --- ESTADOS PARA NOVO LAYOUT ---
   const [showFichaModal, setShowFichaModal] = useState(false);
   const [errorsExpanded, setErrorsExpanded] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 
   // Verificar token armazenado ao carregar
   useEffect(() => {
@@ -1646,6 +1647,9 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
         sector: detectedSector
       });
       setItems(apiItems.length > 0 ? apiItems : [{ id: 1, desc: '', ncm: '', weight: '', value: '' }]);
+
+      // Set AI feedback if available
+      setAiFeedback(extractedData?.feedback_especialista || null);
 
       // Calculate time saved
       const processingTime = Math.round((Date.now() - timeStats.started) / 1000 / 60);
@@ -2320,6 +2324,21 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
                 </div>
               </div>
             </div>
+
+          {/* === FEEDBACK DA IA === */}
+          {aiFeedback && (
+            <div className="bg-gradient-to-r from-accent-900/20 to-primary-900/20 border border-accent-700/30 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="bg-accent-500/20 p-2 rounded-lg shrink-0">
+                  <Sparkles className="w-5 h-5 text-accent-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-accent-400 mb-1">💡 Feedback da IA</div>
+                  <p className="text-white/90 text-sm leading-relaxed">{aiFeedback}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* === VALIDAÇÃO API - Colapsável === */}
           {apiValidation && (
