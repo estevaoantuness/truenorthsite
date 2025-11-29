@@ -677,26 +677,26 @@ const HighLevelFlow = () => {
   return (
     <section className="py-20 bg-slate-900 border-y border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl font-bold text-white mb-12">Fluxo Otimizado</h2>
+        <h2 className="text-3xl font-bold text-white mb-12">Em 3 passos simples</h2>
         <div className="flex flex-col md:flex-row justify-center items-center gap-8">
             <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 w-full md:w-64">
-                <FileSearch className="w-10 h-10 text-primary-500 mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold text-white mb-2">Validação</h3>
-                <p className="text-slate-400 text-sm">Verificação automática de NCM e dados da DUIMP.</p>
+                <Upload className="w-10 h-10 text-primary-500 mb-4 mx-auto" />
+                <h3 className="text-xl font-semibold text-white mb-2">Upload</h3>
+                <p className="text-slate-400 text-sm">Envie PDF, XML ou imagem da invoice comercial.</p>
             </div>
             <ArrowRight className="hidden md:block w-8 h-8 text-slate-600" />
             <ArrowDown className="md:hidden w-8 h-8 text-slate-600" />
             <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 w-full md:w-64">
-                <ShieldCheck className="w-10 h-10 text-accent-500 mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold text-white mb-2">Compliance</h3>
-                <p className="text-slate-400 text-sm">Checagem de LPCO e anuências obrigatórias.</p>
+                <Sparkles className="w-10 h-10 text-accent-500 mb-4 mx-auto" />
+                <h3 className="text-xl font-semibold text-white mb-2">Análise IA</h3>
+                <p className="text-slate-400 text-sm">Extração automática + classificação NCM inteligente.</p>
             </div>
             <ArrowRight className="hidden md:block w-8 h-8 text-slate-600" />
             <ArrowDown className="md:hidden w-8 h-8 text-slate-600" />
             <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 w-full md:w-64">
-                <BarChart3 className="w-10 h-10 text-green-500 mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold text-white mb-2">Resultados</h3>
-                <p className="text-slate-400 text-sm">Redução de custos e tempo de liberação.</p>
+                <Download className="w-10 h-10 text-green-500 mb-4 mx-auto" />
+                <h3 className="text-xl font-semibold text-white mb-2">Exportação</h3>
+                <p className="text-slate-400 text-sm">XML pronto para Siscomex + estimativa de impostos.</p>
             </div>
         </div>
       </div>
@@ -711,14 +711,14 @@ const HowItWorks = () => {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Como a TrueNorth funciona</h2>
           <p className="text-slate-400 max-w-2xl mx-auto">
-            Integração direta com seus sistemas para garantir conformidade antes mesmo do registro.
+            Processo simples e automático. Sua invoice vira dados estruturados em segundos.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
            {[
-             { title: "Conexão", desc: "Conectamos ao seu ERP ou sistema de comex via API segura.", icon: <Globe2 className="w-6 h-6" /> },
-             { title: "Análise IA", desc: "Nossa IA cruza dados com a legislação vigente e histórico do Portal Único.", icon: <Calculator className="w-6 h-6" /> },
-             { title: "Ação", desc: "Alertas em tempo real sobre correções necessárias antes do envio.", icon: <AlertTriangle className="w-6 h-6" /> }
+             { title: "Upload", desc: "Arraste seu PDF, XML ou foto da invoice comercial. Aceitamos qualquer formato legível.", icon: <FileText className="w-6 h-6" /> },
+             { title: "Extração IA", desc: "Nossa IA (Gemini 2.0) extrai fornecedor, itens, valores e sugere NCM com nível de confiança.", icon: <Sparkles className="w-6 h-6" /> },
+             { title: "Resultado", desc: "Veja impostos estimados (II, IPI, PIS/COFINS), anuentes necessários e exporte XML para Siscomex.", icon: <CheckCircle2 className="w-6 h-6" /> }
            ].map((item, i) => (
              <div key={i} className="bg-slate-900/50 p-8 rounded-2xl border border-slate-800 hover:border-slate-700 transition-colors">
                <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center text-primary-400 mb-6">
@@ -742,14 +742,15 @@ const BenefitsSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           <div>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Benefícios tangíveis para sua operação
+              O que você ganha com TrueNorth
             </h2>
             <div className="space-y-6">
               {[
-                "Redução de até 90% em multas por erro de classificação.",
-                "Diminuição drástica no tempo de desembaraço.",
-                "Visibilidade total do processo DUIMP.",
-                "Integração nativa com Catálogo de Produtos."
+                "Classificação NCM automática com nível de confiança (Alta, Média, Baixa).",
+                "Estimativa instantânea de II, IPI e PIS/COFINS.",
+                "Identificação automática de anuentes (ANVISA, MAPA, ANATEL...).",
+                "Exportação XML compatível com Siscomex.",
+                "Alerta de possível subfaturamento na operação."
               ].map((benefit, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <CheckCircle2 className="w-6 h-6 text-green-500 shrink-0 mt-0.5" />
@@ -761,29 +762,27 @@ const BenefitsSection = () => {
           <div className="relative">
              <div className="absolute inset-0 bg-primary-600/20 blur-3xl rounded-full"></div>
              <div className="relative bg-slate-900 border border-slate-800 rounded-2xl p-8">
-                <div className="flex items-center justify-between mb-8 border-b border-slate-800 pb-4">
-                  <div>
-                    <div className="text-sm text-slate-500 uppercase font-semibold">Economia Média Mensal</div>
-                    <div className="text-3xl font-bold text-white">R$ 145.000</div>
-                  </div>
-                  <div className="p-3 bg-green-500/10 rounded-lg">
-                    <TrendingDown className="w-6 h-6 text-green-500" />
-                  </div>
+                <div className="text-center mb-6">
+                  <div className="text-sm text-slate-500 uppercase font-semibold mb-2">Tempo de processamento</div>
+                  <div className="text-5xl font-bold text-white">~30s</div>
+                  <div className="text-slate-400 text-sm mt-2">por invoice</div>
                 </div>
-                <div className="space-y-4">
-                   <div className="flex justify-between text-sm">
-                     <span className="text-slate-400">Demurrage</span>
-                     <span className="text-white font-medium">-45%</span>
+                <div className="space-y-4 border-t border-slate-800 pt-6">
+                   <div className="flex items-center gap-3">
+                     <FileText className="w-5 h-5 text-primary-400" />
+                     <span className="text-slate-300">PDF, XML, Imagem</span>
                    </div>
-                   <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                     <div className="bg-primary-500 h-full w-[55%]"></div>
+                   <div className="flex items-center gap-3">
+                     <Sparkles className="w-5 h-5 text-accent-400" />
+                     <span className="text-slate-300">Powered by Gemini 2.0 Flash</span>
                    </div>
-                   <div className="flex justify-between text-sm mt-4">
-                     <span className="text-slate-400">Multas Aduaneiras</span>
-                     <span className="text-white font-medium">-85%</span>
+                   <div className="flex items-center gap-3">
+                     <Download className="w-5 h-5 text-green-400" />
+                     <span className="text-slate-300">XML Siscomex pronto</span>
                    </div>
-                   <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                     <div className="bg-accent-500 h-full w-[15%]"></div>
+                   <div className="flex items-center gap-3">
+                     <ShieldCheck className="w-5 h-5 text-cyan-400" />
+                     <span className="text-slate-300">Base NCM atualizada</span>
                    </div>
                 </div>
              </div>
@@ -854,15 +853,15 @@ const CTASection = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
     <section id="contato" className="py-24 bg-primary-600 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Pronto para otimizar suas importações?</h2>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Teste agora com sua invoice</h2>
             <p className="text-primary-100 text-xl mb-10 max-w-2xl mx-auto">
-                Faça uma simulação agora e descubra quanto sua empresa pode economizar evitando erros na DUIMP.
+                Faça upload da sua invoice e veja a mágica acontecer. NCM, impostos e anuentes em segundos.
             </p>
-            <button 
+            <button
                 onClick={onSimulateClick}
-                className="bg-white text-primary-600 hover:bg-slate-100 px-10 py-4 rounded-lg text-lg font-bold transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"
+                className="bg-white text-primary-600 hover:bg-slate-100 px-10 py-4 rounded-lg text-lg font-bold transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 flex items-center gap-2 mx-auto"
             >
-                Começar Simulação Gratuita
+                <Upload className="w-5 h-5" /> Fazer Upload Agora
             </button>
         </div>
     </section>
@@ -870,53 +869,48 @@ const CTASection = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
 }
 
 const Footer = () => {
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <footer className="bg-slate-950 border-t border-slate-800 pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-           <div className="col-span-1 md:col-span-1">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+           <div className="col-span-1">
               <div className="flex items-center gap-2 mb-4">
                  <Anchor className="h-6 w-6 text-accent-500" />
                  <span className="font-bold text-lg text-white">TrueNorth</span>
               </div>
               <p className="text-slate-400 text-sm leading-relaxed">
-                 Inteligência e compliance para o novo processo de importação brasileiro.
+                 Extraia dados de invoices, classifique NCM e calcule impostos automaticamente com IA.
               </p>
            </div>
            <div>
-              <h4 className="text-white font-semibold mb-4">Plataforma</h4>
+              <h4 className="text-white font-semibold mb-4">Navegação</h4>
               <ul className="space-y-2 text-sm text-slate-400">
-                 <li><a href="#" className="hover:text-accent-400 transition-colors">Funcionalidades</a></li>
-                 <li><a href="#" className="hover:text-accent-400 transition-colors">Integrações</a></li>
-                 <li><a href="#" className="hover:text-accent-400 transition-colors">Segurança</a></li>
+                 <li><button onClick={() => scrollToSection('produto')} className="hover:text-accent-400 transition-colors">Produto</button></li>
+                 <li><button onClick={() => scrollToSection('como-funciona')} className="hover:text-accent-400 transition-colors">Como Funciona</button></li>
+                 <li><button onClick={() => scrollToSection('para-quem')} className="hover:text-accent-400 transition-colors">Para Quem</button></li>
+                 <li><button onClick={() => scrollToSection('contato')} className="hover:text-accent-400 transition-colors">Contato</button></li>
               </ul>
            </div>
            <div>
-              <h4 className="text-white font-semibold mb-4">Empresa</h4>
+              <h4 className="text-white font-semibold mb-4">Funcionalidades</h4>
               <ul className="space-y-2 text-sm text-slate-400">
-                 <li><a href="#" className="hover:text-accent-400 transition-colors">Sobre nós</a></li>
-                 <li><a href="#" className="hover:text-accent-400 transition-colors">Carreiras</a></li>
-                 <li><a href="#" className="hover:text-accent-400 transition-colors">Blog</a></li>
-              </ul>
-           </div>
-           <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-slate-400">
-                 <li><a href="#" className="hover:text-accent-400 transition-colors">Privacidade</a></li>
-                 <li><a href="#" className="hover:text-accent-400 transition-colors">Termos de uso</a></li>
+                 <li className="flex items-center gap-2"><FileText className="w-4 h-4" /> Upload PDF/XML de Invoice</li>
+                 <li className="flex items-center gap-2"><Calculator className="w-4 h-4" /> Classificação NCM com IA</li>
+                 <li className="flex items-center gap-2"><FileSearch className="w-4 h-4" /> Estimativa de Impostos</li>
+                 <li className="flex items-center gap-2"><Download className="w-4 h-4" /> Exportação XML Siscomex</li>
               </ul>
            </div>
         </div>
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
            <p className="text-slate-500 text-sm">© {new Date().getFullYear()} TrueNorth. Todos os direitos reservados.</p>
-           <div className="flex gap-4">
-              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer">
-                 <span className="font-bold text-xs">in</span>
-              </div>
-              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer">
-                 <span className="font-bold text-xs">tw</span>
-              </div>
-           </div>
+           <p className="text-slate-600 text-xs">Powered by Gemini 2.0 Flash</p>
         </div>
       </div>
     </footer>
@@ -926,7 +920,7 @@ const Footer = () => {
 // --- PÁGINAS PRINCIPAIS ---
 
 // 1. LANDING PAGE WRAPPER
-const Navbar = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
+const Navbar = ({ onSimulateClick, onOpenAuth }: { onSimulateClick: () => void; onOpenAuth: () => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -963,8 +957,11 @@ const Navbar = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
             </div>
           </div>
           <div className="hidden md:block">
-            <button className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-primary-600/20 hover:shadow-primary-600/40">
-              Falar com o time
+            <button
+              onClick={onOpenAuth}
+              className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-primary-600/20 hover:shadow-primary-600/40"
+            >
+              Entrar / Cadastrar
             </button>
           </div>
           <div className="-mr-2 flex md:hidden">
@@ -987,8 +984,11 @@ const Navbar = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
               <button onClick={() => scrollToSection('como-funciona')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Como Funciona</button>
               <button onClick={() => { setIsOpen(false); onSimulateClick(); }} className="text-accent-400 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Simulação</button>
               <button onClick={() => scrollToSection('contato')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Contato</button>
-              <button className="w-full text-left bg-primary-600 text-white px-3 py-2 rounded-md text-base font-medium mt-4 shadow-md">
-                Falar com o time
+              <button
+                onClick={() => { setIsOpen(false); onOpenAuth(); }}
+                className="w-full text-left bg-primary-600 text-white px-3 py-2 rounded-md text-base font-medium mt-4 shadow-md"
+              >
+                Entrar / Cadastrar
               </button>
             </div>
           </motion.div>
@@ -1011,25 +1011,25 @@ const Hero = ({ onSimulateClick }: { onSimulateClick: () => void }) => {
               Plataforma DUIMP Ready
             </div>
             <h1 className="text-4xl lg:text-6xl font-bold text-white leading-[1.1] tracking-tight">
-              Menos erro na <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">DUIMP</span>.<br />
-              Menos contêiner parado no porto.
+              Sua invoice analisada em <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">segundos</span>.<br />
+              NCM, impostos e anuentes automáticos.
             </h1>
             <p className="text-lg text-slate-400 leading-relaxed max-w-xl">
-              Plataforma que integra DUIMP, NCM, LPCO e tributos com os portais oficiais, 
-              reduzindo multas, demurrage e retrabalho nas suas importações.
+              Faça upload da invoice, nossa IA extrai os dados, classifica NCM e calcula impostos.
+              Exporte direto para o Siscomex.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button 
+              <button
                 onClick={onSimulateClick}
                 className="bg-primary-600 hover:bg-primary-500 text-white px-8 py-4 rounded-lg text-base font-semibold transition-all shadow-xl shadow-primary-600/20 hover:shadow-primary-600/30 flex items-center justify-center gap-2 group"
               >
-                Quero ver a Simulação <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                Testar com minha Invoice <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button 
+              <button
                 onClick={onSimulateClick}
                 className="bg-slate-900/50 hover:bg-slate-800 border border-slate-700 text-slate-200 px-8 py-4 rounded-lg text-base font-medium transition-all flex items-center justify-center hover:border-slate-500"
               >
-                Entenda o impacto financeiro
+                Ver como funciona
               </button>
             </div>
             <div className="pt-8 border-t border-slate-800/50">
@@ -1225,10 +1225,10 @@ const AuthModal = ({ isOpen, onClose, mode, setMode, onLogin, onRegister, loadin
   );
 };
 
-const LandingPage = ({ onNavigateToSimulation }: { onNavigateToSimulation: () => void }) => {
+const LandingPage = ({ onNavigateToSimulation, onOpenAuth }: { onNavigateToSimulation: () => void; onOpenAuth: () => void }) => {
   return (
     <>
-      <Navbar onSimulateClick={onNavigateToSimulation} />
+      <Navbar onSimulateClick={onNavigateToSimulation} onOpenAuth={onOpenAuth} />
       <Hero onSimulateClick={onNavigateToSimulation} />
       <HighLevelFlow />
       <HowItWorks />
@@ -1236,6 +1236,7 @@ const LandingPage = ({ onNavigateToSimulation }: { onNavigateToSimulation: () =>
       <AboutSectionWithShip />
       <ForWhomSection />
       <CTASection onSimulateClick={onNavigateToSimulation} />
+      <Footer />
     </>
   );
 };
@@ -1452,7 +1453,7 @@ const ReportModal = ({ results, onClose }: { results: any, onClose: () => void }
   );
 };
 
-const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void }) => {
+const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { onNavigateHome: () => void; openAuthOnMount?: boolean }) => {
   const [operationData, setOperationData] = useState({
     type: 'Importação Própria',
     urf: 'Santos (SP)',
@@ -1530,6 +1531,13 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
     invoice_number: string;
     supplier: { name: string; country: string };
   } | null>(null);
+
+  // Abrir modal de auth se veio da landing page
+  useEffect(() => {
+    if (openAuthOnMount && !currentUser) {
+      setShowAuthModal(true);
+    }
+  }, [openAuthOnMount]);
 
   // Verificar token armazenado ao carregar
   useEffect(() => {
@@ -3143,15 +3151,25 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'landing' | 'simulation'>('landing');
+  const [shouldOpenAuth, setShouldOpenAuth] = useState(false);
 
   // Função para navegar para a simulação (rola para o topo)
   const navigateToSimulation = () => {
+    setShouldOpenAuth(false);
+    setCurrentScreen('simulation');
+    window.scrollTo(0, 0);
+  };
+
+  // Função para navegar para a simulação E abrir auth modal
+  const navigateToAuth = () => {
+    setShouldOpenAuth(true);
     setCurrentScreen('simulation');
     window.scrollTo(0, 0);
   };
 
   // Função para voltar para a home (rola para o topo)
   const navigateHome = () => {
+    setShouldOpenAuth(false);
     setCurrentScreen('landing');
     window.scrollTo(0, 0);
   };
@@ -3159,9 +3177,9 @@ export default function App() {
   return (
     <>
       {currentScreen === 'landing' ? (
-        <LandingPage onNavigateToSimulation={navigateToSimulation} />
+        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={navigateToAuth} />
       ) : (
-        <PlatformSimulationPage onNavigateHome={navigateHome} />
+        <PlatformSimulationPage onNavigateHome={navigateHome} openAuthOnMount={shouldOpenAuth} />
       )}
     </>
   );
