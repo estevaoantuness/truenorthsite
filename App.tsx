@@ -1526,6 +1526,10 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
   } | null>(null);
   const [descricaoDI, setDescricaoDI] = useState<string | null>(null);
   const [alertaSubfaturamento, setAlertaSubfaturamento] = useState<string | null>(null);
+  const [invoiceInfo, setInvoiceInfo] = useState<{
+    invoice_number: string;
+    supplier: { name: string; country: string };
+  } | null>(null);
 
   // Verificar token armazenado ao carregar
   useEffect(() => {
@@ -1666,6 +1670,10 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
       setImpostosEstimados(extractedData?.impostos_estimados || null);
       setDescricaoDI(extractedData?.descricao_di || null);
       setAlertaSubfaturamento(extractedData?.alerta_subfaturamento || null);
+      setInvoiceInfo({
+        invoice_number: extractedData?.invoice_number || 'N/A',
+        supplier: extractedData?.supplier || { name: 'N/A', country: 'N/A' }
+      });
 
       // Calculate time saved
       const processingTime = Math.round((Date.now() - timeStats.started) / 1000 / 60);
@@ -1733,6 +1741,55 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
 
     navigator.clipboard.writeText(fullText).then(() => {
       alert('Dados copiados para a área de transferência!');
+    }).catch(() => {
+      alert('Erro ao copiar dados.');
+    });
+  };
+
+  // Função para copiar TODOS os dados extraídos formatados
+  const handleCopyAll = () => {
+    const itemsText = items.map((item, idx) =>
+      `${idx + 1}. ${item.desc || 'Item sem descrição'} - NCM ${item.ncm || 'N/A'} - USD ${item.value || '0.00'}`
+    ).join('\n');
+
+    const totalValue = items.reduce((sum, item) => sum + (parseFloat(item.value) || 0), 0);
+
+    let fullText = `══════════════════════════════════════
+INVOICE: ${invoiceInfo?.invoice_number || 'N/A'}
+FORNECEDOR: ${invoiceInfo?.supplier?.name || 'N/A'} (${invoiceInfo?.supplier?.country || 'N/A'})
+VALOR TOTAL: USD ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+══════════════════════════════════════
+
+ITENS:
+${itemsText}`;
+
+    if (impostosEstimados) {
+      fullText += `
+
+══════════════════════════════════════
+IMPOSTOS ESTIMADOS:
+II: R$ ${impostosEstimados.ii.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+IPI: R$ ${impostosEstimados.ipi.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+PIS/COFINS: R$ ${impostosEstimados.pis_cofins.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+TOTAL: R$ ${impostosEstimados.total_impostos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+Base de cálculo: R$ ${impostosEstimados.base_calculo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+══════════════════════════════════════`;
+    }
+
+    if (selectedAnuentes.length > 0) {
+      fullText += `
+
+ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
+    }
+
+    if (alertaSubfaturamento) {
+      fullText += `
+
+⚠️ ALERTA: ${alertaSubfaturamento}`;
+    }
+
+    navigator.clipboard.writeText(fullText).then(() => {
+      alert('Todos os dados copiados para a área de transferência!');
     }).catch(() => {
       alert('Erro ao copiar dados.');
     });
@@ -2300,17 +2357,25 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
 
                 {/* Status de processamento */}
                 <div className="space-y-2 text-sm text-slate-400">
-                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 20 ? 'text-green-400' : ''}`}>
-                    {processingProgress > 20 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 15 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 15 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
                     Lendo documento...
                   </div>
-                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 50 ? 'text-green-400' : ''}`}>
-                    {processingProgress > 50 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 35 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 35 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
                     Extraindo dados dos itens...
                   </div>
-                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 80 ? 'text-green-400' : ''}`}>
-                    {processingProgress > 80 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
-                    Validando NCMs e anuências...
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 55 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 55 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Classificando NCMs...
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 75 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 75 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Verificando anuentes...
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 90 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 90 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Calculando impostos...
                   </div>
                 </div>
               </div>
@@ -2625,13 +2690,30 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
                             />
                          </div>
                          <div className="col-span-6 sm:col-span-3">
-                            <input 
-                              placeholder="NCM (8 dígitos)"
-                              maxLength={8}
-                              className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded p-2 focus:border-primary-500 outline-none placeholder:text-slate-600"
-                              value={item.ncm}
-                              onChange={(e) => handleItemChange(item.id, 'ncm', e.target.value)}
-                            />
+                            <div className="relative">
+                              <input
+                                placeholder="NCM (8 dígitos)"
+                                maxLength={8}
+                                className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded p-2 pr-8 focus:border-primary-500 outline-none placeholder:text-slate-600"
+                                value={item.ncm}
+                                onChange={(e) => handleItemChange(item.id, 'ncm', e.target.value)}
+                              />
+                              {item.ncm && item.ncmConfianca && (
+                                <div
+                                  className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full ${
+                                    item.ncmConfianca === 'ALTA' ? 'bg-green-500' :
+                                    item.ncmConfianca === 'MEDIA' ? 'bg-yellow-500' :
+                                    'bg-red-500'
+                                  }`}
+                                  title={`Confiança ${item.ncmConfianca}`}
+                                />
+                              )}
+                            </div>
+                            {item.ncmDescricao && (
+                              <div className="text-[10px] text-slate-500 mt-1 truncate" title={item.ncmDescricao}>
+                                {item.ncmDescricao}
+                              </div>
+                            )}
                          </div>
                          <div className="col-span-3 sm:col-span-2">
                             <input 
@@ -2919,26 +3001,46 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
                           <CheckCircle2 className="w-4 h-4 text-green-400" />
                           <span className="text-white">{item.desc || 'Item ' + (idx + 1)}</span>
                         </div>
-                        <span className="text-slate-500 text-xs">NCM: {item.ncm || 'N/A'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 text-xs">NCM: {item.ncm || 'N/A'}</span>
+                          {item.ncm && item.ncmConfianca && (
+                            <div
+                              className={`w-2.5 h-2.5 rounded-full ${
+                                item.ncmConfianca === 'ALTA' ? 'bg-green-500' :
+                                item.ncmConfianca === 'MEDIA' ? 'bg-yellow-500' :
+                                'bg-red-500'
+                              }`}
+                              title={`Confiança ${item.ncmConfianca}`}
+                            />
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Botões de Ação */}
-                <div className="flex gap-3">
+                <div className="space-y-2">
                   <button
-                    onClick={handleCopyFields}
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                    onClick={handleCopyAll}
+                    className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                   >
-                    <Copy className="w-4 h-4" /> Copiar Campos
+                    <Copy className="w-4 h-4" /> Copiar Tudo
                   </button>
-                  <button
-                    onClick={handleExportDUIMP}
-                    className="flex-1 bg-primary-600 hover:bg-primary-500 text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Download className="w-4 h-4" /> Exportar PDF
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCopyFields}
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Copy className="w-4 h-4" /> Copiar Campos
+                    </button>
+                    <button
+                      onClick={handleExportDUIMP}
+                      className="flex-1 bg-primary-600 hover:bg-primary-500 text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Download className="w-4 h-4" /> Exportar PDF
+                    </button>
+                  </div>
                 </div>
 
                 {/* Botão Preview Portal Único */}
