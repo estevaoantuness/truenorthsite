@@ -465,3 +465,80 @@ export async function processFullFlow(file: File, onProgress?: (step: string, pr
 
   return { operation, extractedData, validation };
 }
+
+// Export preview - returns export data as JSON for validation
+export interface ExportPreview {
+  exportData: {
+    numeroReferencia: string;
+    dataEmbarque: string;
+    incoterm: string;
+    moeda: string;
+    exportador: { nome: string; pais: string };
+    itens: Array<{
+      sequencial: number;
+      ncm: string;
+      descricao: string;
+      quantidade: number;
+      unidade: string;
+      valorUnitario: number;
+      valorTotal: number;
+      pesoLiquido: number;
+      paisOrigem: string;
+    }>;
+    totais: { valorMercadoria: number; frete: number; seguro: number };
+  };
+  validationErrors: string[];
+  isValid: boolean;
+}
+
+export async function getExportPreview(operationId: string): Promise<ExportPreview> {
+  const response = await fetch(`${API_URL}/api/export/${operationId}/preview`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao gerar preview de exportação');
+  }
+
+  return response.json();
+}
+
+// Export XML - downloads the Siscomex XML file
+export async function exportSiscomexXml(operationId: string): Promise<void> {
+  const token = getStoredToken();
+  if (!token) {
+    throw new Error('Você precisa estar logado para exportar');
+  }
+
+  const response = await fetch(`${API_URL}/api/export/${operationId}/xml`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    const message = error.validationErrors
+      ? `${error.message}\n${error.validationErrors.join('\n')}`
+      : error.error || 'Erro ao exportar XML';
+    throw new Error(message);
+  }
+
+  // Get filename from Content-Disposition header or generate one
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let filename = `duimp_${operationId}.xml`;
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename="(.+)"/);
+    if (match) filename = match[1];
+  }
+
+  // Download the file
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}

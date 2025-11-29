@@ -1795,6 +1795,25 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
     });
   };
 
+  // Função para exportar XML Siscomex
+  const handleExportSiscomexXml = async () => {
+    if (!currentOperationId) {
+      alert('Nenhuma operação selecionada para exportar');
+      return;
+    }
+
+    try {
+      await api.exportSiscomexXml(currentOperationId);
+      alert('XML exportado com sucesso!');
+    } catch (error: any) {
+      // Format error message with line breaks for validation errors
+      const message = error.message?.includes('\n')
+        ? error.message
+        : `Erro ao exportar XML:\n${error.message}`;
+      alert(message);
+    }
+  };
+
   // Função para exportar DUIMP como PDF
   const handleExportDUIMP = () => {
     const doc = new jsPDF();
@@ -3050,6 +3069,16 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                     className="w-full mt-3 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors border border-slate-800"
                   >
                     <FileText className="w-4 h-4" /> Ver preview Portal Único
+                  </button>
+                )}
+
+                {/* Botão Exportar XML Siscomex */}
+                {currentOperationId && (
+                  <button
+                    onClick={handleExportSiscomexXml}
+                    className="w-full mt-3 bg-cyan-600 hover:bg-cyan-500 text-white py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Download className="w-4 h-4" /> Exportar XML Siscomex
                   </button>
                 )}
               </motion.div>
