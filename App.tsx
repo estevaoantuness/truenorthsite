@@ -1516,6 +1516,17 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
   const [errorsExpanded, setErrorsExpanded] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 
+  // Novas features - Impostos, Descrição DI, Subfaturamento
+  const [impostosEstimados, setImpostosEstimados] = useState<{
+    ii: number;
+    ipi: number;
+    pis_cofins: number;
+    total_impostos: number;
+    base_calculo: number;
+  } | null>(null);
+  const [descricaoDI, setDescricaoDI] = useState<string | null>(null);
+  const [alertaSubfaturamento, setAlertaSubfaturamento] = useState<string | null>(null);
+
   // Verificar token armazenado ao carregar
   useEffect(() => {
     const token = api.getStoredToken();
@@ -1650,6 +1661,11 @@ const PlatformSimulationPage = ({ onNavigateHome }: { onNavigateHome: () => void
 
       // Set AI feedback if available
       setAiFeedback(extractedData?.feedback_especialista || null);
+
+      // Set new features - Impostos, Descrição DI, Subfaturamento
+      setImpostosEstimados(extractedData?.impostos_estimados || null);
+      setDescricaoDI(extractedData?.descricao_di || null);
+      setAlertaSubfaturamento(extractedData?.alerta_subfaturamento || null);
 
       // Calculate time saved
       const processingTime = Math.round((Date.now() - timeStats.started) / 1000 / 60);
@@ -2336,6 +2352,87 @@ LPCO: ${lpcoRequested ? 'Sim' : 'Não'}`;
                   <div className="text-sm font-medium text-accent-400 mb-1">💡 Feedback da IA</div>
                   <p className="text-white/90 text-sm leading-relaxed">{aiFeedback}</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* === ALERTA DE SUBFATURAMENTO === */}
+          {alertaSubfaturamento && (
+            <div className="bg-gradient-to-r from-orange-900/30 to-red-900/30 border border-orange-700/50 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="bg-orange-500/20 p-2 rounded-lg shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-orange-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-orange-400 mb-1">Alerta de Subfaturamento</div>
+                  <p className="text-white/90 text-sm leading-relaxed">{alertaSubfaturamento}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* === ESTIMATIVA DE IMPOSTOS === */}
+          {impostosEstimados && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Calculator className="w-5 h-5 text-primary-400" />
+                <h3 className="text-sm font-semibold text-white">Estimativa de Impostos</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <div className="text-xs text-slate-400 mb-1">II (Imposto de Importação)</div>
+                  <div className="text-lg font-bold text-white">
+                    R$ {impostosEstimados.ii.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <div className="text-xs text-slate-400 mb-1">IPI</div>
+                  <div className="text-lg font-bold text-white">
+                    R$ {impostosEstimados.ipi.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-3">
+                  <div className="text-xs text-slate-400 mb-1">PIS/COFINS (11,65%)</div>
+                  <div className="text-lg font-bold text-white">
+                    R$ {impostosEstimados.pis_cofins.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-primary-900/30 border border-primary-700/30 rounded-lg p-3">
+                  <div className="text-xs text-primary-400 mb-1">Total Estimado</div>
+                  <div className="text-lg font-bold text-primary-400">
+                    R$ {impostosEstimados.total_impostos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 text-xs text-slate-500 text-center">
+                Base de cálculo: R$ {impostosEstimados.base_calculo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+          )}
+
+          {/* === DESCRIÇÃO PARA DI === */}
+          {descricaoDI && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-accent-400" />
+                  <h3 className="text-sm font-semibold text-white">Descrição para DI</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(descricaoDI);
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-accent-400 hover:text-accent-300 bg-accent-500/10 hover:bg-accent-500/20 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copiar
+                </button>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-3">
+                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{descricaoDI}</p>
+              </div>
+              <div className="mt-2 text-xs text-slate-500">
+                Texto formatado para Portal Único - pronto para colar na DI
               </div>
             </div>
           )}

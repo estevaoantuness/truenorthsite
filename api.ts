@@ -134,6 +134,17 @@ export interface ExtractedData {
   setor_detectado?: string;
   anuentes_operacao?: string[];
   feedback_especialista?: string;
+
+  // Novas features - Impostos, Descrição DI, Subfaturamento
+  impostos_estimados?: {
+    ii: number;
+    ipi: number;
+    pis_cofins: number;
+    total_impostos: number;
+    base_calculo: number;
+  };
+  descricao_di?: string;
+  alerta_subfaturamento?: string | null;
 }
 
 export interface ValidationResult {
