@@ -1488,7 +1488,7 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
   }>(null);
 
   // --- NOVOS ESTADOS PARA O FLUXO DO COPILOTO ---
-  const [workflowStep, setWorkflowStep] = useState<'upload' | 'processing' | 'form' | 'document'>('upload');
+  const [workflowStep, setWorkflowStep] = useState<'upload' | 'processing' | 'summary' | 'form' | 'document'>('upload');
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [showDocumentPreview, setShowDocumentPreview] = useState(false);
@@ -1530,6 +1530,19 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
   const [invoiceInfo, setInvoiceInfo] = useState<{
     invoice_number: string;
     supplier: { name: string; country: string };
+  } | null>(null);
+
+  // --- ESTADOS PARA UX CLEAN (Summary Card + Campos Avançados) ---
+  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const [showAllItems, setShowAllItems] = useState(false);
+  const [extractionSummary, setExtractionSummary] = useState<{
+    totalItems: number;
+    totalValue: number;
+    currency: string;
+    sector: string;
+    country: string;
+    processingTimeMs: number;
+    ncmConfidence: { alta: number; media: number; baixa: number };
   } | null>(null);
 
   // Abrir modal de auth se veio da landing page
@@ -1684,10 +1697,32 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
       });
 
       // Calculate time saved
-      const processingTime = Math.round((Date.now() - timeStats.started) / 1000 / 60);
+      const processingTimeMs = Date.now() - timeStats.started;
+      const processingTime = Math.round(processingTimeMs / 1000 / 60);
       setTimeStats(prev => ({ ...prev, ended: Date.now(), saved: Math.max(17, 25 - processingTime) }));
 
-      setWorkflowStep('form');
+      // Calculate extraction summary for Summary Card
+      const ncmConfidence = { alta: 0, media: 0, baixa: 0 };
+      apiItems.forEach((item: any) => {
+        if (item.ncmConfianca === 'ALTA') ncmConfidence.alta++;
+        else if (item.ncmConfianca === 'MEDIA') ncmConfidence.media++;
+        else ncmConfidence.baixa++;
+      });
+
+      const totalValue = apiItems.reduce((sum: number, item: any) => sum + (parseFloat(item.value) || 0), 0);
+
+      setExtractionSummary({
+        totalItems: apiItems.length,
+        totalValue,
+        currency: extractedData?.currency || 'USD',
+        sector: detectedSector,
+        country: extractedData?.supplier?.country || 'Desconhecido',
+        processingTimeMs,
+        ncmConfidence
+      });
+
+      // Go to summary step instead of form
+      setWorkflowStep('summary');
 
       // Reload history after successful operation
       loadOperationsHistory();
@@ -2157,12 +2192,14 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
              <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
                {workflowStep === 'upload' && 'Comece enviando sua Invoice'}
                {workflowStep === 'processing' && 'Seu copiloto está analisando...'}
-               {workflowStep === 'form' && 'Dados extraídos automaticamente'}
+               {workflowStep === 'summary' && 'Invoice processada com sucesso'}
+               {workflowStep === 'form' && 'Revise os dados extraídos'}
                {workflowStep === 'document' && 'Documento pronto para uso'}
              </h1>
              <p className="text-slate-400 max-w-2xl mx-auto">
                {workflowStep === 'upload' && 'Arraste uma invoice ou escolha um exemplo para ver a mágica acontecer.'}
                {workflowStep === 'processing' && 'Extraindo dados, validando NCMs e verificando anuências...'}
+               {workflowStep === 'summary' && 'Confira o resumo da extração antes de prosseguir.'}
                {workflowStep === 'form' && `Campos preenchidos automaticamente. Você economizou ${timeStats.saved} minutos!`}
                {workflowStep === 'document' && 'Copie os dados ou exporte o rascunho para o Portal Único.'}
              </p>
@@ -2409,6 +2446,140 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
             </div>
           )}
 
+          {/* === STEP 2.5: SUMMARY CARD (Feedback Breve) === */}
+          {workflowStep === 'summary' && extractionSummary && (
+            <div className="max-w-xl mx-auto">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl"
+              >
+                {/* Header com status */}
+                <div className="bg-gradient-to-r from-green-900/40 to-accent-900/40 border-b border-slate-800 p-6">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                      <CheckCircle2 className="w-6 h-6 text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">Extração Concluída</h3>
+                      <p className="text-sm text-slate-400">{uploadedFileName || 'Invoice processada'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Métricas principais */}
+                <div className="p-6 space-y-6">
+                  {/* Grid de métricas */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800">
+                      <div className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Setor</div>
+                      <div className="text-lg font-bold text-white">{extractionSummary.sector}</div>
+                    </div>
+                    <div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800">
+                      <div className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Itens</div>
+                      <div className="text-lg font-bold text-white">{extractionSummary.totalItems}</div>
+                    </div>
+                    <div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800">
+                      <div className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Origem</div>
+                      <div className="text-lg font-bold text-white">{extractionSummary.country}</div>
+                    </div>
+                  </div>
+
+                  {/* Valor total e confiança */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-primary-900/30 to-primary-950/30 rounded-xl p-4 border border-primary-800/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-4 h-4 text-primary-400" />
+                        <span className="text-xs text-primary-400 uppercase tracking-wider">Valor Total</span>
+                      </div>
+                      <div className="text-2xl font-bold text-white">
+                        {extractionSummary.currency} {extractionSummary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-900/30 to-green-950/30 rounded-xl p-4 border border-green-800/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShieldCheck className="w-4 h-4 text-green-400" />
+                        <span className="text-xs text-green-400 uppercase tracking-wider">NCM Confiança</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {extractionSummary.ncmConfidence.alta > 0 && (
+                          <span className="bg-green-500/20 text-green-400 text-sm font-bold px-2 py-1 rounded">
+                            {extractionSummary.ncmConfidence.alta} ALTA
+                          </span>
+                        )}
+                        {extractionSummary.ncmConfidence.media > 0 && (
+                          <span className="bg-yellow-500/20 text-yellow-400 text-sm font-bold px-2 py-1 rounded">
+                            {extractionSummary.ncmConfidence.media} MÉD
+                          </span>
+                        )}
+                        {extractionSummary.ncmConfidence.baixa > 0 && (
+                          <span className="bg-red-500/20 text-red-400 text-sm font-bold px-2 py-1 rounded">
+                            {extractionSummary.ncmConfidence.baixa} BAIXA
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tempo economizado */}
+                  <div className="bg-gradient-to-r from-accent-900/20 to-primary-900/20 rounded-xl p-4 border border-accent-800/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-accent-500/20 rounded-lg flex items-center justify-center">
+                          <Zap className="w-5 h-5 text-accent-400" />
+                        </div>
+                        <div>
+                          <div className="text-sm text-slate-400">Processado em {(extractionSummary.processingTimeMs / 1000).toFixed(1)}s</div>
+                          <div className="text-lg font-bold text-accent-400">Você economizou ~{timeStats.saved} minutos</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Insight da IA */}
+                  {aiFeedback && (
+                    <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-accent-500/20 rounded-lg flex items-center justify-center shrink-0">
+                          <Sparkles className="w-4 h-4 text-accent-400" />
+                        </div>
+                        <div>
+                          <div className="text-xs text-accent-400 font-semibold mb-1">Insight do Copiloto</div>
+                          <p className="text-sm text-slate-300 leading-relaxed">{aiFeedback}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botões de ação */}
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setWorkflowStep('form')}
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FileSearch className="w-4 h-4" />
+                      Revisar Detalhes
+                    </button>
+                    <button
+                      onClick={() => {
+                        setWorkflowStep('form');
+                        // Auto-scroll to simulation button after a short delay
+                        setTimeout(() => {
+                          const simBtn = document.querySelector('[data-simulation-btn]');
+                          if (simBtn) simBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                      }}
+                      className="flex-1 bg-primary-600 hover:bg-primary-500 text-white py-3 px-4 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary-900/30"
+                    >
+                      Prosseguir
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
           {/* === STEP 3: FORM (Layout Single-Column Limpo) === */}
           {workflowStep === 'form' && (
           <div className="max-w-2xl mx-auto">
@@ -2416,7 +2587,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
             <div className="bg-gradient-to-r from-primary-900/30 to-accent-900/30 border border-primary-800/30 rounded-xl p-4 mb-8">
               <div className="flex flex-wrap items-center justify-center gap-6 text-center">
                 <div>
-                  <div className="text-xl font-bold text-white">{selectedInvoice ? SAMPLE_INVOICES[selectedInvoice as keyof typeof SAMPLE_INVOICES].processingTime : 8} min</div>
+                  <div className="text-xl font-bold text-white">{selectedInvoice ? SAMPLE_INVOICES[selectedInvoice as keyof typeof SAMPLE_INVOICES].processingTime : Math.round((extractionSummary?.processingTimeMs || 8000) / 1000)} s</div>
                   <div className="text-xs text-slate-400">Com copiloto</div>
                 </div>
                 <div className="text-slate-600 text-sm">vs</div>
@@ -2630,40 +2801,11 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
             </div>
           )}
 
-          {/* Formulário Single-Column */}
+          {/* Formulário Single-Column - CLEAN */}
           <div className="space-y-6">
-              {/* Bloco 1: Dados da Operação */}
-              <div className="bg-slate-900 p-5 rounded-xl border border-slate-800">
-                <h3 className="text-white font-semibold flex items-center gap-2 mb-6 border-b border-slate-800 pb-2">
-                  <span className="bg-primary-600 text-xs rounded px-2 py-0.5">1</span> Dados da Operação
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-xs text-slate-400 mb-1.5">Tipo de Operação</label>
-                     <select 
-                       className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                       value={operationData.type}
-                       onChange={(e) => setOperationData({...operationData, type: e.target.value})}
-                     >
-                       <option>Importação Própria</option>
-                       <option>Conta e Ordem</option>
-                       <option>Encomenda</option>
-                     </select>
-                   </div>
-                   <div>
-                     <label className="block text-xs text-slate-400 mb-1.5">URF de Despacho</label>
-                     <select 
-                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
-                        value={operationData.urf}
-                        onChange={(e) => setOperationData({...operationData, urf: e.target.value})}
-                     >
-                       <option>Santos (SP)</option>
-                       <option>Rio de Janeiro (RJ)</option>
-                       <option>Itajaí (SC)</option>
-                       <option>Paranaguá (PR)</option>
-                       <option>Aeroporto Guarulhos (SP)</option>
-                     </select>
-                   </div>
+              {/* Bloco 1: Dados Essenciais (País + Setor) */}
+              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
+                <div className="grid grid-cols-2 gap-4 mb-4">
                    <div>
                      <label className="block text-xs text-slate-400 mb-1.5">País de Procedência</label>
                      <select
@@ -2678,12 +2820,13 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                    </div>
                    <div>
                      <label className="block text-xs text-slate-400 mb-1.5">Setor do Produto</label>
-                     <select 
+                     <select
                         className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
                         value={operationData.sector}
                         onChange={(e) => setOperationData({...operationData, sector: e.target.value})}
                      >
                        <option>Outros</option>
+                       <option>Eletronicos</option>
                        <option>Químico</option>
                        <option>Cosméticos</option>
                        <option>Alimentos/Bebidas</option>
@@ -2691,6 +2834,71 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                      </select>
                    </div>
                 </div>
+
+                {/* Campos Avançados - Colapsável */}
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+                  className="w-full flex items-center justify-between text-xs text-slate-500 hover:text-slate-400 py-2 border-t border-slate-800 mt-2 transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                    Configurações avançadas
+                  </span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedFields ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {showAdvancedFields && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-2 gap-4 pt-4">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1.5">Tipo de Operação</label>
+                          <select
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                            value={operationData.type}
+                            onChange={(e) => setOperationData({...operationData, type: e.target.value})}
+                          >
+                            <option>Importação Própria</option>
+                            <option>Conta e Ordem</option>
+                            <option>Encomenda</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1.5">URF de Despacho</label>
+                          <select
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                            value={operationData.urf}
+                            onChange={(e) => setOperationData({...operationData, urf: e.target.value})}
+                          >
+                            <option>Santos (SP)</option>
+                            <option>Rio de Janeiro (RJ)</option>
+                            <option>Itajaí (SC)</option>
+                            <option>Paranaguá (PR)</option>
+                            <option>Aeroporto Guarulhos (SP)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1.5">Modalidade</label>
+                          <select
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                            value={operationData.modality}
+                            onChange={(e) => setOperationData({...operationData, modality: e.target.value})}
+                          >
+                            <option>Normal</option>
+                            <option>Admissão Temporária</option>
+                            <option>Drawback</option>
+                          </select>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Bloco 2: Itens e NCM */}
@@ -2705,64 +2913,59 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                 </div>
                 
                 <div className="space-y-4">
-                  {items.map((item, index) => (
-                    <div key={item.id} className="relative bg-slate-950/50 p-3 rounded border border-slate-800">
-                      <div className="grid grid-cols-12 gap-3">
-                         <div className="col-span-12 sm:col-span-5">
-                            <input 
-                              placeholder="Descrição do Produto"
-                              className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded p-2 focus:border-primary-500 outline-none placeholder:text-slate-600"
-                              value={item.desc}
-                              onChange={(e) => handleItemChange(item.id, 'desc', e.target.value)}
+                  {(showAllItems ? items : items.slice(0, 2)).map((item, index) => (
+                    <div key={item.id} className="relative bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                      {/* Layout Clean - Descrição + NCM com badge */}
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-white font-medium truncate">{item.desc || 'Item sem descrição'}</div>
+                          {item.ncmDescricao && (
+                            <div className="text-xs text-slate-500 mt-0.5 truncate">{item.ncmDescricao}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-slate-400">NCM</span>
+                            <input
+                              maxLength={8}
+                              className="w-24 bg-slate-900 border border-slate-700 text-slate-200 text-sm font-mono rounded px-2 py-1 focus:border-primary-500 outline-none"
+                              value={item.ncm}
+                              onChange={(e) => handleItemChange(item.id, 'ncm', e.target.value)}
                             />
-                         </div>
-                         <div className="col-span-6 sm:col-span-3">
-                            <div className="relative">
-                              <input
-                                placeholder="NCM (8 dígitos)"
-                                maxLength={8}
-                                className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded p-2 pr-8 focus:border-primary-500 outline-none placeholder:text-slate-600"
-                                value={item.ncm}
-                                onChange={(e) => handleItemChange(item.id, 'ncm', e.target.value)}
-                              />
-                              {item.ncm && item.ncmConfianca && (
-                                <div
-                                  className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full ${
-                                    item.ncmConfianca === 'ALTA' ? 'bg-green-500' :
-                                    item.ncmConfianca === 'MEDIA' ? 'bg-yellow-500' :
-                                    'bg-red-500'
-                                  }`}
-                                  title={`Confiança ${item.ncmConfianca}`}
-                                />
-                              )}
-                            </div>
-                            {item.ncmDescricao && (
-                              <div className="text-[10px] text-slate-500 mt-1 truncate" title={item.ncmDescricao}>
-                                {item.ncmDescricao}
-                              </div>
-                            )}
-                         </div>
-                         <div className="col-span-3 sm:col-span-2">
-                            <input 
-                              placeholder="Peso (kg)"
-                              type="number"
-                              className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded p-2 focus:border-primary-500 outline-none placeholder:text-slate-600"
-                              value={item.weight}
-                              onChange={(e) => handleItemChange(item.id, 'weight', e.target.value)}
+                          </div>
+                          {item.ncm && item.ncmConfianca && (
+                            <div
+                              className={`w-2.5 h-2.5 rounded-full ${
+                                item.ncmConfianca === 'ALTA' ? 'bg-green-500' :
+                                item.ncmConfianca === 'MEDIA' ? 'bg-yellow-500' :
+                                'bg-red-500'
+                              }`}
+                              title={`Confiança ${item.ncmConfianca}`}
                             />
-                         </div>
-                         <div className="col-span-3 sm:col-span-2">
-                            <input 
-                              placeholder="Valor ($)"
-                              type="number"
-                              className="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded p-2 focus:border-primary-500 outline-none placeholder:text-slate-600"
-                              value={item.value}
-                              onChange={(e) => handleItemChange(item.id, 'value', e.target.value)}
-                            />
-                         </div>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Linha de valores - mais compacta */}
+                      <div className="flex items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500">Valor:</span>
+                          <span className="text-white font-medium">USD {parseFloat(item.value || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500">Peso:</span>
+                          <span className="text-white">{item.weight || '0'} kg</span>
+                        </div>
+                        {item.quantity && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">Qtd:</span>
+                            <span className="text-white">{item.quantity}</span>
+                          </div>
+                        )}
+                      </div>
+
                       {items.length > 1 && (
-                        <button 
+                        <button
                           onClick={() => removeItem(item.id)}
                           className="absolute -top-2 -right-2 bg-slate-800 text-slate-400 p-1 rounded-full hover:bg-red-900/50 hover:text-red-400 transition-colors"
                         >
@@ -2771,6 +2974,21 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                       )}
                     </div>
                   ))}
+
+                  {/* Botão Ver Mais/Menos */}
+                  {items.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllItems(!showAllItems)}
+                      className="w-full py-2 text-xs text-slate-400 hover:text-slate-300 border border-dashed border-slate-700 rounded-lg transition-colors flex items-center justify-center gap-1"
+                    >
+                      {showAllItems ? (
+                        <>Mostrar menos</>
+                      ) : (
+                        <>+ Ver mais {items.length - 2} {items.length - 2 === 1 ? 'item' : 'itens'}</>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -2879,7 +3097,8 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                    </div>
                  </div>
 
-                 <button 
+                 <button
+                   data-simulation-btn
                    onClick={handleSimulationClick}
                    disabled={calculating}
                    className="w-full bg-primary-600 hover:bg-primary-500 text-white py-3 rounded-lg font-bold transition-all shadow-lg shadow-primary-900/50 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
