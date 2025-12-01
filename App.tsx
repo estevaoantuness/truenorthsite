@@ -87,6 +87,27 @@ const PAISES_IMPORTADORES = [
   'Uruguai'
 ];
 
+// --- ANIMAÇÕES (Sem opacity 0, com blur e slide) ---
+const simContainerVariants = {
+  hidden: { y: 24, filter: 'blur(12px)', opacity: 0.2 },
+  show: {
+    y: 0,
+    filter: 'blur(0px)',
+    opacity: 1,
+    transition: { when: 'beforeChildren', staggerChildren: 0.08, duration: 0.55, ease: [0.22, 1, 0.36, 1] }
+  }
+};
+
+const simItemVariants = {
+  hidden: { y: 16, filter: 'blur(10px)', opacity: 0.35 },
+  show: {
+    y: 0,
+    filter: 'blur(0px)',
+    opacity: 1,
+    transition: { duration: 0.45, ease: [0.25, 1, 0.5, 1] }
+  }
+};
+
 // --- LISTA DE ÓRGÃOS ANUENTES ---
 const LISTA_ANUENTES = [
   'ANVISA',
@@ -2738,12 +2759,13 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
           {workflowStep === 'summary' && extractionSummary && (
             <div className="max-w-xl mx-auto">
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                variants={simContainerVariants}
+                initial="hidden"
+                animate="show"
                 className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl"
               >
                 {/* Header com status */}
-                <div className="bg-gradient-to-r from-green-900/40 to-accent-900/40 border-b border-slate-800 p-6">
+                <motion.div className="bg-gradient-to-r from-green-900/40 to-accent-900/40 border-b border-slate-800 p-6" variants={simItemVariants}>
                   <div className="flex items-center justify-center gap-3">
                     <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
                       <CheckCircle2 className="w-6 h-6 text-green-400" />
@@ -2753,29 +2775,29 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                       <p className="text-sm text-slate-400">{uploadedFileName || 'Invoice processada'}</p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Métricas principais */}
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-6" >
                   {/* Grid de métricas */}
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800">
+                    <motion.div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800" variants={simItemVariants}>
                       <div className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Setor</div>
                       <div className="text-lg font-bold text-white">{extractionSummary.sector}</div>
-                    </div>
-                    <div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800">
+                    </motion.div>
+                    <motion.div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800" variants={simItemVariants}>
                       <div className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Itens</div>
                       <div className="text-lg font-bold text-white">{extractionSummary.totalItems}</div>
-                    </div>
-                    <div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800">
+                    </motion.div>
+                    <motion.div className="bg-slate-950/50 rounded-xl p-4 text-center border border-slate-800" variants={simItemVariants}>
                       <div className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Origem</div>
                       <div className="text-lg font-bold text-white">{extractionSummary.country}</div>
-                    </div>
+                    </motion.div>
                   </div>
 
                   {/* Valor total e confiança */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-primary-900/30 to-primary-950/30 rounded-xl p-4 border border-primary-800/30">
+                    <motion.div className="bg-gradient-to-br from-primary-900/30 to-primary-950/30 rounded-xl p-4 border border-primary-800/30" variants={simItemVariants}>
                       <div className="flex items-center gap-2 mb-2">
                         <DollarSign className="w-4 h-4 text-primary-400" />
                         <span className="text-xs text-primary-400 uppercase tracking-wider">Valor Total</span>
@@ -2783,8 +2805,8 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                       <div className="text-2xl font-bold text-white">
                         {extractionSummary.currency} {extractionSummary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-green-900/30 to-green-950/30 rounded-xl p-4 border border-green-800/30">
+                    </motion.div>
+                    <motion.div className="bg-gradient-to-br from-green-900/30 to-green-950/30 rounded-xl p-4 border border-green-800/30" variants={simItemVariants}>
                       <div className="flex items-center gap-2 mb-2">
                         <ShieldCheck className="w-4 h-4 text-green-400" />
                         <span className="text-xs text-green-400 uppercase tracking-wider">NCM Confiança</span>
@@ -2806,11 +2828,11 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                           </span>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   </div>
 
                   {/* Tempo economizado */}
-                  <div className="bg-gradient-to-r from-accent-900/20 to-primary-900/20 rounded-xl p-4 border border-accent-800/30">
+                  <motion.div className="bg-gradient-to-r from-accent-900/20 to-primary-900/20 rounded-xl p-4 border border-accent-800/30" variants={simItemVariants}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-accent-500/20 rounded-lg flex items-center justify-center">
@@ -2822,11 +2844,11 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* Insight da IA */}
                   {aiFeedback && (
-                    <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800">
+                    <motion.div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800" variants={simItemVariants}>
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 bg-accent-500/20 rounded-lg flex items-center justify-center shrink-0">
                           <Sparkles className="w-4 h-4 text-accent-400" />
@@ -2836,11 +2858,11 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                           <p className="text-sm text-slate-300 leading-relaxed">{aiFeedback}</p>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* Botões de ação */}
-                  <div className="flex gap-3 pt-2">
+                  <motion.div className="flex gap-3 pt-2" variants={simItemVariants}>
                     <button
                       onClick={() => setWorkflowStep('form')}
                       className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
@@ -2862,7 +2884,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                       Prosseguir
                       <ArrowRight className="w-4 h-4" />
                     </button>
-                  </div>
+                  </motion.div>
                 </div>
               </motion.div>
             </div>
@@ -2870,7 +2892,12 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
 
           {/* === STEP 3: FORM (Layout Single-Column Limpo) === */}
           {workflowStep === 'form' && (
-          <div className="max-w-2xl mx-auto">
+          <motion.div
+            className="max-w-2xl mx-auto"
+            variants={simContainerVariants}
+            initial="hidden"
+            animate="show"
+          >
             {/* Métricas de Produtividade - Compacto */}
             <div className="bg-gradient-to-r from-primary-900/30 to-accent-900/30 border border-primary-800/30 rounded-xl p-4 mb-8">
               <div className="flex flex-wrap items-center justify-center gap-6 text-center">
@@ -3638,7 +3665,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
               </button>
             </div>
           )}
-          </div>
+          </motion.div>
           )}
 
           {/* === STEP 4: DOCUMENT (Layout Limpo) === */}
