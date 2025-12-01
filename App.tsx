@@ -2637,60 +2637,80 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                     </div>
                   )}
 
-                  {/* Lista de Operações */}
+                  {/* Lista de Operações (clicável) */}
                   <div className="space-y-2">
-                    {operationsHistory.map((op) => (
-                      <div
-                        key={op.id}
-                        className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex items-center justify-between hover:border-slate-700 transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            op.status === 'VALIDADO' ? 'bg-green-500/10' :
-                            op.status === 'COM_ERROS' ? 'bg-orange-500/10' :
-                            'bg-slate-800'
-                          }`}>
-                            {op.status === 'VALIDADO' ? (
-                              <CheckCircle2 className="w-5 h-5 text-green-400" />
-                            ) : op.status === 'COM_ERROS' ? (
-                              <AlertTriangle className="w-5 h-5 text-orange-400" />
+                    {operationsHistory.map((op) => {
+                      const feedback =
+                        op.status === 'COM_ERROS'
+                          ? 'Revisar anuentes/LPCO e corrigir campos pendentes.'
+                          : op.status === 'VALIDADO'
+                          ? 'Ok para exportar DI/DUIMP.'
+                          : 'Em processamento.';
+
+                      const timeLabel = new Date(op.createdAt).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      });
+
+                      return (
+                        <button
+                          key={op.id}
+                          onClick={() => {
+                            setCurrentOperationId(op.id);
+                            setWorkflowStep('form');
+                            // Scroll até o topo do formulário
+                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+                          }}
+                          className="w-full text-left bg-slate-900 border border-slate-800 rounded-lg p-4 flex items-center justify-between hover:border-primary-600/60 hover:bg-slate-900/70 transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              op.status === 'VALIDADO' ? 'bg-green-500/10' :
+                              op.status === 'COM_ERROS' ? 'bg-orange-500/10' :
+                              'bg-slate-800'
+                            }`}>
+                              {op.status === 'VALIDADO' ? (
+                                <CheckCircle2 className="w-5 h-5 text-green-400" />
+                              ) : op.status === 'COM_ERROS' ? (
+                                <AlertTriangle className="w-5 h-5 text-orange-400" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-slate-400" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-white text-sm font-medium">
+                                {op.arquivoNome || 'Operação sem nome'}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {timeLabel}
+                                {op.arquivoTipo && ` • ${op.arquivoTipo}`}
+                              </div>
+                              <div className="text-[11px] text-slate-400 mt-0.5">
+                                {feedback}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {op.custoTotalErros && Number(op.custoTotalErros) > 0 ? (
+                              <div className="text-orange-400 text-sm font-medium">
+                                R$ {Number(op.custoTotalErros).toLocaleString('pt-BR')}
+                              </div>
                             ) : (
-                              <FileText className="w-5 h-5 text-slate-400" />
+                              <div className="text-green-400 text-sm font-medium flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> OK
+                              </div>
+                            )}
+                            {op.tempoEconomizadoMin && (
+                              <div className="text-xs text-slate-500">
+                                {op.tempoEconomizadoMin} min economizados
+                              </div>
                             )}
                           </div>
-                          <div>
-                            <div className="text-white text-sm font-medium">
-                              {op.arquivoNome || 'Operação sem nome'}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {new Date(op.createdAt).toLocaleDateString('pt-BR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                              {op.arquivoTipo && ` • ${op.arquivoTipo}`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          {op.custoTotalErros && Number(op.custoTotalErros) > 0 ? (
-                            <div className="text-orange-400 text-sm font-medium">
-                              R$ {Number(op.custoTotalErros).toLocaleString('pt-BR')}
-                            </div>
-                          ) : (
-                            <div className="text-green-400 text-sm font-medium flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> OK
-                            </div>
-                          )}
-                          {op.tempoEconomizadoMin && (
-                            <div className="text-xs text-slate-500">
-                              {op.tempoEconomizadoMin} min economizados
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {loadingHistory && (
