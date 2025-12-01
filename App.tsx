@@ -1243,108 +1243,199 @@ const LandingPage = ({ onNavigateToSimulation, onOpenAuth }: { onNavigateToSimul
 
 // 2. SIMULATION PAGE WRAPPER
 // Modal de Relatório Detalhado
-const ReportModal = ({ results, onClose }: { results: any, onClose: () => void }) => {
-  // Função para gerar e baixar PDF
+const ReportModal = ({
+  results,
+  extractionSummary,
+  impostosEstimados,
+  selectedAnuentes,
+  items,
+  aiFeedback,
+  alertaSubfaturamento,
+  invoiceInfo,
+  uploadedFileName,
+  timeStats,
+  apiValidation,
+  lpcoRequested,
+  onClose
+}: {
+  results: {
+    risks: string[];
+    impactRange: string;
+    totalImpact: string;
+    avoided: string;
+    details: { fines: string; demurrage: string; ops: string; total: string };
+    inadimplencia: number;
+  };
+  extractionSummary: {
+    totalItems: number;
+    totalValue: number;
+    currency: string;
+    sector: string;
+    country: string;
+    processingTimeMs: number;
+    ncmConfidence: { alta: number; media: number; baixa: number };
+  } | null;
+  impostosEstimados: {
+    ii: number;
+    ipi: number;
+    pis_cofins: number;
+    total_impostos: number;
+    base_calculo: number;
+  } | null;
+  selectedAnuentes: string[];
+  items: Array<{
+    id: number;
+    desc: string;
+    ncm: string;
+    weight: string;
+    value: string;
+    ncmDescricao?: string;
+    ncmConfianca?: string;
+    quantity?: string;
+    unitPrice?: string;
+    origin?: string;
+    anuentes?: string[];
+  }>;
+  aiFeedback: string | null;
+  alertaSubfaturamento: string | null;
+  invoiceInfo: { invoice_number: string; supplier: { name: string; country: string } } | null;
+  uploadedFileName: string | null;
+  timeStats: { started: number; ended: number; saved: number };
+  apiValidation: api.ValidationResult | null;
+  lpcoRequested: boolean;
+  onClose: () => void;
+}) => {
+  const formatBRL = (value?: number | null) => {
+    if (value === null || value === undefined || isNaN(Number(value))) return 'N/D';
+    return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+  const sanitizeNcm = (ncm: string) => (ncm || '').replace(/\D/g, '');
+  const totalItems = extractionSummary?.totalItems ?? items.length;
+  const totalValue = extractionSummary?.totalValue ?? items.reduce((sum, item) => sum + (parseFloat(item.value) || 0), 0);
+  const currency = extractionSummary?.currency || 'USD';
+  const totalValueLabel = totalValue > 0 ? `${currency} ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/D';
+  const ncmConfidence = extractionSummary?.ncmConfidence || {
+    alta: items.filter(i => i.ncmConfianca === 'ALTA').length,
+    media: items.filter(i => i.ncmConfianca === 'MEDIA').length,
+    baixa: items.filter(i => i.ncmConfianca !== 'ALTA' && i.ncmConfianca !== 'MEDIA').length,
+  };
+  const genericNcmCount = items.filter(i => sanitizeNcm(i.ncm).length !== 8).length;
+  const timeSavedLabel = typeof timeStats?.saved === 'number' ? `${timeStats.saved} min` : 'N/D';
+  const impostosBreakdown = impostosEstimados ? [
+    { label: 'II', value: formatBRL(impostosEstimados.ii) },
+    { label: 'IPI', value: formatBRL(impostosEstimados.ipi) },
+    { label: 'PIS/COFINS', value: formatBRL(impostosEstimados.pis_cofins) },
+    { label: 'Total Estimado', value: formatBRL(impostosEstimados.total_impostos) },
+  ] : [];
+  const anuentesNaoMarcados = LISTA_ANUENTES.filter(a => !selectedAnuentes.includes(a));
+  const riscoGeral = apiValidation?.risco_geral || null;
+  const custosValidacao = apiValidation?.custos?.custoTotal ? formatBRL(apiValidation.custos.custoTotal) : null;
+  const alertasBase = [
+    ...(alertaSubfaturamento ? [alertaSubfaturamento] : []),
+    ...results.risks,
+  ];
+  const alertas = Array.from(new Set(alertasBase));
+  const recomendacoes: string[] = [];
+  if (aiFeedback) recomendacoes.push(aiFeedback);
+  const missingNcm = items.filter(i => !sanitizeNcm(i.ncm)).length;
+  if (missingNcm > 0) {
+    recomendacoes.push(`${missingNcm} item(s) ainda sem NCM definido. Preencha para reduzir risco.`);
+  }
+  if (selectedAnuentes.length === 0) {
+    recomendacoes.push('Nenhum anuente marcado. Confirme exigências antes do registro.');
+  }
+  if (!lpcoRequested && selectedAnuentes.length > 0) {
+    recomendacoes.push('LPCO não marcado como solicitado. Solicite se houver anuente aplicável.');
+  }
+
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 20;
 
-    // Header
-    doc.setFillColor(15, 23, 42); // slate-900
-    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 32, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.text('TrueNorth - Relatório de Análise', pageWidth / 2, 25, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 35, { align: 'center' });
+    doc.setFontSize(16);
+    doc.text('TrueNorth - Relatório da Operação', pageWidth / 2, 18, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text(
+      `Arquivo: ${uploadedFileName || invoiceInfo?.invoice_number || 'N/D'} | País: ${extractionSummary?.country || invoiceInfo?.supplier?.country || 'N/D'}`,
+      pageWidth / 2,
+      26,
+      { align: 'center' }
+    );
 
-    y = 55;
+    y = 42;
     doc.setTextColor(0, 0, 0);
 
-    // Resumo de Riscos
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Riscos Identificados', 14, y);
-    y += 10;
-
+    doc.setFontSize(13);
+    doc.text('Sumário Executivo', 14, y);
+    y += 8;
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    if (results.risks && results.risks.length > 0) {
-      results.risks.forEach((risk: string) => {
-        doc.setTextColor(220, 38, 38); // red-600
-        doc.text('• ' + risk, 14, y);
-        y += 7;
+    doc.text(`Economia estimada: ${results.details?.total || 'N/D'}`, 14, y); y += 6;
+    doc.text(`Riscos mitigados: ${results.risks.length}`, 14, y); y += 6;
+    doc.text(`Tempo economizado: ${timeSavedLabel}`, 14, y); y += 8;
+
+    doc.setFontSize(13);
+    doc.text('Classificação NCM', 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.text(`Itens classificados: ${totalItems}`, 14, y); y += 6;
+    doc.text(`Confiança - Alta: ${ncmConfidence.alta} | Média: ${ncmConfidence.media} | Baixa: ${ncmConfidence.baixa}`, 14, y); y += 6;
+    doc.text(`NCMs genéricos/pendentes: ${genericNcmCount}`, 14, y); y += 8;
+
+    doc.setFontSize(13);
+    doc.text('Impostos Estimados', 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    if (impostosBreakdown.length > 0) {
+      impostosBreakdown.forEach(item => {
+        doc.text(`${item.label}: ${item.value}`, 14, y);
+        y += 6;
       });
     } else {
-      doc.setTextColor(34, 197, 94); // green-500
-      doc.text('Nenhum risco crítico identificado', 14, y);
-      y += 7;
+      doc.text('Não disponível para esta operação.', 14, y);
+      y += 6;
     }
+    y += 2;
 
-    y += 10;
-    doc.setTextColor(0, 0, 0);
-
-    // Detalhamento de Custos
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Detalhamento de Economia', 14, y);
-    y += 10;
-
+    doc.setFontSize(13);
+    doc.text('Compliance & Anuentes', 14, y);
+    y += 8;
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.text(`Selecionados: ${selectedAnuentes.length > 0 ? selectedAnuentes.join(', ') : 'Nenhum'}`, 14, y); y += 6;
+    doc.text(`Pendentes: ${anuentesNaoMarcados.length > 0 ? anuentesNaoMarcados.join(', ') : 'Nenhum'}`, 14, y); y += 8;
 
-    const detailItems = [
-      { label: 'Mitigação de Multas', value: results.details?.fines || 'R$ 0' },
-      { label: 'Demurrage Evitado', value: results.details?.demurrage || 'R$ 0' },
-      { label: 'Custos Operacionais', value: results.details?.ops || 'R$ 0' },
-    ];
-
-    detailItems.forEach((item) => {
-      doc.text(item.label + ':', 14, y);
-      doc.text(item.value, 120, y);
-      y += 8;
+    doc.setFontSize(13);
+    doc.text('Alertas e Recomendações', 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    (alertas.length > 0 ? alertas : ['Nenhum alerta informado']).forEach(alerta => {
+      doc.text(`• ${alerta}`, 14, y);
+      y += 6;
+      if (y > 270) { doc.addPage(); y = 20; }
+    });
+    recomendacoes.forEach(rec => {
+      doc.text(`• ${rec}`, 14, y);
+      y += 6;
+      if (y > 270) { doc.addPage(); y = 20; }
     });
 
-    // Linha de total
-    y += 5;
-    doc.setDrawColor(100, 116, 139); // slate-500
-    doc.line(14, y, pageWidth - 14, y);
+    doc.addPage();
+    y = 20;
+    doc.setFontSize(13);
+    doc.text('Itens da Operação', 14, y);
     y += 8;
-
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('TOTAL DE ECONOMIA:', 14, y);
-    doc.setTextColor(34, 197, 94); // green-500
-    doc.text(results.details?.total || 'R$ 0', 120, y);
-
-    y += 15;
-    doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    items.forEach((item, idx) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.text(`Item ${idx + 1}: ${item.desc || 'Sem descrição'}`, 14, y); y += 6;
+      doc.text(`NCM: ${item.ncm || 'N/A'} | Valor: ${item.value || '0'} | Peso: ${item.weight || '0'}`, 14, y); y += 6;
+      if (item.ncmConfianca) { doc.text(`Confiança: ${item.ncmConfianca}`, 14, y); y += 6; }
+      y += 2;
+    });
 
-    // Impacto Estimado
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Impacto Estimado', 14, y);
-    y += 10;
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Faixa de Impacto: ' + (results.impactRange || 'N/A'), 14, y);
-    y += 7;
-    doc.text('Total Estimado: ' + (results.totalImpact || 'N/A'), 14, y);
-    y += 7;
-    doc.text('Valor Evitado: ' + (results.avoided || 'N/A'), 14, y);
-
-    // Footer
-    y = doc.internal.pageSize.getHeight() - 20;
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text('TrueNorth - Seu Copiloto de Importação', pageWidth / 2, y, { align: 'center' });
-    doc.text('Este relatório é uma estimativa baseada nos dados informados.', pageWidth / 2, y + 5, { align: 'center' });
-
-    // Save PDF
     doc.save(`truenorth-relatorio-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
@@ -1357,95 +1448,180 @@ const ReportModal = ({ results, onClose }: { results: any, onClose: () => void }
       onClick={onClose}
     >
       <motion.div 
-        initial={{ scale: 0.9, y: 20 }} 
+        initial={{ scale: 0.95, y: 10 }} 
         animate={{ scale: 1, y: 0 }} 
-        exit={{ scale: 0.9, y: 20 }}
-        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+        exit={{ scale: 0.95, y: 10 }}
+        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <FileCheck className="w-5 h-5 text-accent-500" /> Relatório Detalhado
-          </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <XCircle className="w-6 h-6" />
-          </button>
+          <div className="flex flex-col gap-1">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <FileCheck className="w-5 h-5 text-accent-500" /> Relatório Completo da Operação
+            </h3>
+            <p className="text-xs text-slate-400">
+              {uploadedFileName || invoiceInfo?.invoice_number || 'Operação simulada'} • {extractionSummary?.country || invoiceInfo?.supplier?.country || 'Origem não informada'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDownloadPDF}
+              className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-colors"
+            >
+              <Download className="w-4 h-4" /> Baixar PDF
+            </button>
+            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+              <XCircle className="w-6 h-6" />
+            </button>
+          </div>
         </div>
         
-        <div className="p-6 space-y-6">
-          <div className="space-y-4">
-             {/* Item 1 */}
-             <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-               <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                     <div className="p-1.5 bg-red-900/30 rounded text-red-400"><AlertTriangle className="w-4 h-4" /></div>
-                     <div>
-                       <div className="text-sm font-semibold text-slate-200">Mitigação de Multas</div>
-                       <div className="text-xs text-slate-500">NCM e Administrativas</div>
-                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-bold text-white">{results.details?.fines}</div>
-                    <div className="text-[10px] text-green-400">Economia projetada</div>
-                  </div>
-               </div>
-               <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                 <div className="bg-red-500 h-full w-[40%] rounded-full"></div>
-               </div>
-             </div>
-
-             {/* Item 2 */}
-             <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-               <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                     <div className="p-1.5 bg-orange-900/30 rounded text-orange-400"><Clock className="w-4 h-4" /></div>
-                     <div>
-                       <div className="text-sm font-semibold text-slate-200">Redução de Demurrage</div>
-                       <div className="text-xs text-slate-500">Otimização de tempo</div>
-                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-bold text-white">{results.details?.demurrage}</div>
-                    <div className="text-[10px] text-green-400">Economia projetada</div>
-                  </div>
-               </div>
-               <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                 <div className="bg-orange-500 h-full w-[60%] rounded-full"></div>
-               </div>
-             </div>
-
-             {/* Item 3 */}
-             <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-               <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                     <div className="p-1.5 bg-blue-900/30 rounded text-blue-400"><TrendingDown className="w-4 h-4" /></div>
-                     <div>
-                       <div className="text-sm font-semibold text-slate-200">Eficiência Operacional</div>
-                       <div className="text-xs text-slate-500">Redução de retrabalho</div>
-                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-bold text-white">{results.details?.ops}</div>
-                    <div className="text-[10px] text-green-400">Economia projetada</div>
-                  </div>
-               </div>
-               <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                 <div className="bg-blue-500 h-full w-[25%] rounded-full"></div>
-               </div>
-             </div>
+        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+              <div className="text-xs text-slate-500 uppercase mb-1">Economia estimada</div>
+              <div className="text-lg font-bold text-green-400">{results.details?.total || 'N/D'}</div>
+            </div>
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+              <div className="text-xs text-slate-500 uppercase mb-1">Riscos mapeados</div>
+              <div className="text-lg font-bold text-orange-400">{results.risks.length}</div>
+            </div>
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+              <div className="text-xs text-slate-500 uppercase mb-1">Tempo economizado</div>
+              <div className="text-lg font-bold text-blue-400">{timeSavedLabel}</div>
+            </div>
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+              <div className="text-xs text-slate-500 uppercase mb-1">Risco geral</div>
+              <div className="text-lg font-bold text-slate-100">{riscoGeral || 'Simulação'}</div>
+            </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-800 flex justify-between items-end">
-             <div>
-               <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total de Economia</span>
-               <div className="text-2xl font-bold text-green-400">{results.details?.total}</div>
-             </div>
-             <button
-               onClick={handleDownloadPDF}
-               className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-colors"
-             >
-               <Download className="w-4 h-4" /> Baixar PDF
-             </button>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-white flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-accent-500" /> Classificação NCM
+                  </div>
+                  <div className="text-xs text-slate-400">Itens: {totalItems} • Valor: {totalValueLabel}</div>
+                </div>
+                <div className="text-xs text-slate-500">Setor: {extractionSummary?.sector || 'N/D'}</div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center">
+                  <div className="text-xs text-green-300">Alta</div>
+                  <div className="text-lg font-bold text-green-400">{ncmConfidence.alta}</div>
+                </div>
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-center">
+                  <div className="text-xs text-amber-200">Média</div>
+                  <div className="text-lg font-bold text-amber-300">{ncmConfidence.media}</div>
+                </div>
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center">
+                  <div className="text-xs text-red-200">Baixa/Pendente</div>
+                  <div className="text-lg font-bold text-red-300">{ncmConfidence.baixa}</div>
+                </div>
+              </div>
+              <div className="text-xs text-slate-400">NCMs genéricos ou incompletos: {genericNcmCount}</div>
+            </div>
+
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-accent-500" /> Impostos Estimados
+                </div>
+                <div className="text-xs text-slate-400">{impostosEstimados ? 'Fonte: Extração' : 'Não informado'}</div>
+              </div>
+              {impostosBreakdown.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {impostosBreakdown.map(item => (
+                    <div key={item.label} className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                      <div className="text-xs text-slate-500">{item.label}</div>
+                      <div className="text-sm font-semibold text-white">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-slate-400">Impostos não retornados pela API para esta operação.</div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800 space-y-3">
+              <div className="text-sm font-semibold text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-accent-500" /> Compliance & Anuentes
+              </div>
+              <div className="text-xs text-slate-400">Selecionados: {selectedAnuentes.length > 0 ? selectedAnuentes.join(', ') : 'Nenhum'}</div>
+              <div className="text-xs text-slate-500">Pendentes para revisão: {anuentesNaoMarcados.join(', ') || 'Nenhum'}</div>
+              <div className="text-xs text-slate-400">LPCO: {lpcoRequested ? 'Solicitado' : 'Não indicado'}</div>
+            </div>
+
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800 space-y-3">
+              <div className="text-sm font-semibold text-white flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-orange-400" /> Alertas e Recomendações
+              </div>
+              <div className="space-y-2">
+                {(alertas.length > 0 ? alertas : ['Nenhum alerta registrado']).map((alerta, idx) => (
+                  <div key={`alerta-${idx}`} className="text-sm text-slate-200 flex gap-2">
+                    <AlertTriangle className="w-4 h-4 text-orange-400 mt-0.5" /> {alerta}
+                  </div>
+                ))}
+                {recomendacoes.map((rec, idx) => (
+                  <div key={`rec-${idx}`} className="text-sm text-slate-300 flex gap-2">
+                    <Sparkles className="w-4 h-4 text-accent-500 mt-0.5" /> {rec}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-white flex items-center gap-2">
+                <FileSearch className="w-4 h-4 text-accent-500" /> Itens da Operação
+              </div>
+              <div className="text-xs text-slate-400">{items.length} item(s)</div>
+            </div>
+            <div className="space-y-2">
+              {items.map((item, idx) => (
+                <div key={item.id || idx} className="bg-slate-900 border border-slate-800 rounded-lg p-3">
+                  <div className="flex justify-between text-sm text-white">
+                    <span className="font-semibold">Item {idx + 1}</span>
+                    <span className="text-xs text-slate-400">{item.ncm || 'NCM pendente'}</span>
+                  </div>
+                  <div className="text-sm text-slate-200 mt-1">{item.desc || 'Sem descrição'}</div>
+                  <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-3">
+                    <span>Valor: {item.value || '0'}</span>
+                    <span>Peso: {item.weight || '0'} kg</span>
+                    {item.ncmConfianca && <span>Confiança: {item.ncmConfianca}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800 space-y-3">
+            <div className="text-sm font-semibold text-white flex items-center gap-2">
+              <TrendingDown className="w-4 h-4 text-accent-500" /> Valor agregado desta análise
+            </div>
+            <div className="grid md:grid-cols-4 gap-3">
+              <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                <div className="text-xs text-slate-500">Multas evitadas</div>
+                <div className="text-sm font-semibold text-white">{results.details?.fines || 'N/D'}</div>
+              </div>
+              <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                <div className="text-xs text-slate-500">Demurrage evitado</div>
+                <div className="text-sm font-semibold text-white">{results.details?.demurrage || 'N/D'}</div>
+              </div>
+              <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                <div className="text-xs text-slate-500">Eficiência operacional</div>
+                <div className="text-sm font-semibold text-white">{results.details?.ops || 'N/D'}</div>
+              </div>
+              <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
+                <div className="text-xs text-slate-500">Custos (validação real)</div>
+                <div className="text-sm font-semibold text-white">{custosValidacao || 'N/D'}</div>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -2179,7 +2355,21 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
       <main className="py-12 md:py-16">
         <AnimatePresence>
           {showReport && results && (
-            <ReportModal results={results} onClose={() => setShowReport(false)} />
+            <ReportModal
+              results={results}
+              extractionSummary={extractionSummary}
+              impostosEstimados={impostosEstimados}
+              selectedAnuentes={selectedAnuentes}
+              items={items}
+              aiFeedback={aiFeedback}
+              alertaSubfaturamento={alertaSubfaturamento}
+              invoiceInfo={invoiceInfo}
+              uploadedFileName={uploadedFileName}
+              timeStats={timeStats}
+              apiValidation={apiValidation}
+              lpcoRequested={lpcoRequested}
+              onClose={() => setShowReport(false)}
+            />
           )}
         </AnimatePresence>
 
