@@ -473,9 +473,15 @@ export interface ExportPreview {
     dataEmbarque: string;
     incoterm: string;
     moeda: string;
+    codigoURF: string;
+    viaTransporte: string;
+    tipoDeclaracao: string;
+    importador: { cnpj: string; nome: string; uf?: string };
     exportador: { nome: string; pais: string };
     itens: Array<{
       sequencial: number;
+      adicao?: number;
+      destaque?: number;
       ncm: string;
       descricao: string;
       quantidade: number;
@@ -483,17 +489,80 @@ export interface ExportPreview {
       valorUnitario: number;
       valorTotal: number;
       pesoLiquido: number;
+      pesoBruto: number;
       paisOrigem: string;
+      fabricante?: string;
+      condicaoMercadoria?: string;
+      fundamentoLegal?: string;
+      licencaImportacao?: string;
+      anuentes?: string[];
+      marca?: string;
+      modelo?: string;
+      numeroSerie?: string;
+      aplicacao?: string;
     }>;
-    totais: { valorMercadoria: number; frete: number; seguro: number };
+    totais: { valorMercadoria: number; frete: number; seguro: number; valorAduaneiro: number };
   };
   validationErrors: string[];
   isValid: boolean;
 }
 
-export async function getExportPreview(operationId: string): Promise<ExportPreview> {
-  const response = await fetch(`${API_URL}/api/export/${operationId}/preview`, {
-    headers: getAuthHeaders(),
+export interface ExportOverrides {
+  numeroReferencia?: string;
+  dataEmbarque?: string;
+  incoterm?: string;
+  moeda?: string;
+  codigo_urf?: string;
+  via_transporte?: string;
+  tipo_declaracao?: string;
+  importador?: { cnpj?: string; nome?: string; uf?: string };
+  buyer?: { cnpj?: string; name?: string; estado?: string };
+  items?: Array<{
+    sequencial?: number;
+    ncm?: string;
+    description?: string;
+    quantidade?: number;
+    quantity?: number;
+    unit?: string;
+    unit_price?: number;
+    total_price?: number;
+    valor_unitario?: number;
+    valor_total?: number;
+    peso_bruto?: number;
+    peso_kg?: number;
+    peso_liquido?: number;
+    origem?: string;
+    paisOrigem?: string;
+    fabricante?: string;
+    condicaoMercadoria?: string;
+    fundamentoLegal?: string;
+    licencaImportacao?: string;
+    anuentes?: string[];
+    anuentes_necessarios?: string[];
+    marca?: string;
+    modelo?: string;
+    numeroSerie?: string;
+    aplicacao?: string;
+  }>;
+  freight?: number;
+  frete?: number;
+  insurance?: number;
+  seguro?: number;
+  total_value?: number;
+}
+
+export async function getExportPreview(operationId: string, overrides?: ExportOverrides): Promise<ExportPreview> {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(overrides ? { 'Content-Type': 'application/json' } : {}),
+  };
+
+  const url = `${API_URL}/api/export/${operationId}/preview`;
+
+  const response = await fetch(url, {
+    method: overrides ? 'POST' : 'GET',
+    headers,
+    body: overrides ? JSON.stringify({ overrides }) : undefined,
   });
 
   if (!response.ok) {
@@ -505,14 +574,26 @@ export async function getExportPreview(operationId: string): Promise<ExportPrevi
 }
 
 // Export XML - downloads the Siscomex XML file
-export async function exportSiscomexXml(operationId: string): Promise<void> {
+export async function exportSiscomexXml(operationId: string, overrides?: ExportOverrides, persist = true): Promise<void> {
   const token = getStoredToken();
   if (!token) {
     throw new Error('Você precisa estar logado para exportar');
   }
 
+  const headers: Record<string, string> = { 'Authorization': `Bearer ${token}` };
+  let body: string | undefined;
+  let method: 'GET' | 'POST' = 'GET';
+
+  if (overrides) {
+    method = 'POST';
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify({ overrides, persist });
+  }
+
   const response = await fetch(`${API_URL}/api/export/${operationId}/xml`, {
-    headers: { 'Authorization': `Bearer ${token}` },
+    method,
+    headers,
+    body,
   });
 
   if (!response.ok) {

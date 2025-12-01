@@ -1638,9 +1638,20 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
     modality: 'Normal',
     sector: 'Outros'
   });
+  const [duimpFields, setDuimpFields] = useState({
+    cnpj: '',
+    nome: '',
+    uf: '',
+    codigoURF: 'NAO_INFORMADO',
+    viaTransporte: 'MARITIMO',
+    tipoDeclaracao: 'CONSUMO',
+    dataEmbarque: '',
+    incoterm: 'FOB',
+    moeda: 'USD'
+  });
 
   const [items, setItems] = useState([
-    { id: 1, desc: '', ncm: '', weight: '', value: '' }
+    { id: 1, desc: '', ncm: '', weight: '', value: '', unitPrice: '', quantity: '', origin: '' }
   ]);
 
   // Estado de compliance usando novo sistema de multi-select
@@ -1843,9 +1854,9 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
         ncm: item.ncm_sugerido || '',
         ncmDescricao: item.ncm_descricao || '',
         ncmConfianca: item.ncm_confianca || '',
-        weight: item.peso_kg?.toString() || '',
+        weight: (item.peso_bruto ?? item.peso_kg ?? item.peso_liquido ?? '').toString(),
         value: item.total_price?.toString() || '0',
-        quantity: `${item.quantity || 0} ${item.unit || 'UN'}`,
+        quantity: `${item.quantity || ''} ${item.unit || ''}`.trim(),
         unitPrice: item.unit_price?.toString() || '0',
         origin: item.origem || '',
         anuentes: item.anuentes_necessarios || []
@@ -1860,7 +1871,18 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
         modality: 'Normal',
         sector: detectedSector
       });
-      setItems(apiItems.length > 0 ? apiItems : [{ id: 1, desc: '', ncm: '', weight: '', value: '' }]);
+      setDuimpFields({
+        cnpj: extractedData?.buyer?.cnpj || '',
+        nome: extractedData?.buyer?.name || '',
+        uf: extractedData?.buyer?.estado || '',
+        codigoURF: extractedData?.codigo_urf || 'NAO_INFORMADO',
+        viaTransporte: extractedData?.via_transporte || extractedData?.modal || 'MARITIMO',
+        tipoDeclaracao: extractedData?.tipo_declaracao || 'CONSUMO',
+        dataEmbarque: extractedData?.invoice_date || '',
+        incoterm: extractedData?.incoterm || 'FOB',
+        moeda: extractedData?.currency || 'USD'
+      });
+      setItems(apiItems.length > 0 ? apiItems : [{ id: 1, desc: '', ncm: '', weight: '', value: '', unitPrice: '', quantity: '', origin: '' }]);
 
       // Set AI feedback if available
       setAiFeedback(extractedData?.feedback_especialista || null);
@@ -2024,7 +2046,15 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
     }
 
     try {
-      await api.exportSiscomexXml(currentOperationId);
+      const overrides = buildExportOverrides();
+      const preview = await api.getExportPreview(currentOperationId, overrides);
+
+      if (preview.validationErrors.length > 0) {
+        alert(`Corrija os campos antes de exportar:\n${preview.validationErrors.join('\n')}`);
+        return;
+      }
+
+      await api.exportSiscomexXml(currentOperationId, overrides, true);
       alert('XML exportado com sucesso!');
     } catch (error: any) {
       // Format error message with line breaks for validation errors
@@ -2186,7 +2216,18 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
       modality: 'Normal',
       sector: 'Outros'
     });
-    setItems([{ id: 1, desc: '', ncm: '', weight: '', value: '' }]);
+    setDuimpFields({
+      cnpj: '',
+      nome: '',
+      uf: '',
+      codigoURF: 'NAO_INFORMADO',
+      viaTransporte: 'MARITIMO',
+      tipoDeclaracao: 'CONSUMO',
+      dataEmbarque: '',
+      incoterm: 'FOB',
+      moeda: 'USD'
+    });
+    setItems([{ id: 1, desc: '', ncm: '', weight: '', value: '', unitPrice: '', quantity: '', origin: '' }]);
     setSelectedAnuentes([]);
     setLpcoRequested(false);
     // Reset API states
@@ -2201,7 +2242,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
 
   const addItem = () => {
     if (items.length < 3) {
-      setItems([...items, { id: Date.now(), desc: '', ncm: '', weight: '', value: '' }]);
+      setItems([...items, { id: Date.now(), desc: '', ncm: '', weight: '', value: '', unitPrice: '', quantity: '', origin: '' }]);
     }
   };
 
@@ -2209,6 +2250,61 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
     if (items.length > 1) {
       setItems(items.filter(item => item.id !== id));
     }
+  };
+
+  const toNumber = (value: any): number | undefined => {
+    if (value === null || value === undefined || value === '') return undefined;
+    const cleaned = String(value).replace(/\./g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? undefined : num;
+  };
+
+  const parseQuantityUnit = (value: string) => {
+    if (!value) return { quantity: undefined, unit: undefined };
+    const match = value.match(/([\d.,]+)/);
+    const quantity = match ? parseFloat(match[1].replace(',', '.')) : undefined;
+    const unit = value.replace(match ? match[1] : '', '').trim() || undefined;
+    return { quantity, unit };
+  };
+
+  const buildExportOverrides = (): api.ExportOverrides => {
+    const itemOverrides = items.map((item, idx) => {
+      const { quantity, unit } = parseQuantityUnit(item.quantity || '');
+      return {
+        sequencial: idx + 1,
+        ncm: item.ncm,
+        description: item.desc,
+        quantity,
+        unit,
+        total_price: toNumber(item.value),
+        unit_price: toNumber(item.unitPrice),
+        peso_bruto: toNumber(item.weight),
+        peso_kg: toNumber(item.weight),
+        peso_liquido: toNumber(item.weight),
+        origem: item.origin || undefined,
+      };
+    });
+
+    return {
+      numeroReferencia: invoiceInfo?.invoice_number,
+      dataEmbarque: duimpFields.dataEmbarque,
+      incoterm: duimpFields.incoterm,
+      moeda: duimpFields.moeda,
+      codigo_urf: duimpFields.codigoURF,
+      via_transporte: duimpFields.viaTransporte,
+      tipo_declaracao: duimpFields.tipoDeclaracao,
+      importador: {
+        cnpj: duimpFields.cnpj,
+        nome: duimpFields.nome,
+        uf: duimpFields.uf,
+      },
+      buyer: {
+        cnpj: duimpFields.cnpj,
+        name: duimpFields.nome,
+        estado: duimpFields.uf,
+      },
+      items: itemOverrides,
+    };
   };
 
   // Handler do botão que verifica autenticação antes de rodar a simulação
@@ -3185,6 +3281,56 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                         )}
                       </div>
 
+                      {/* Campos editáveis para DUIMP */}
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3 text-xs">
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">Peso bruto (kg)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
+                            value={item.weight}
+                            onChange={(e) => handleItemChange(item.id, 'weight', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">Valor total (USD)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
+                            value={item.value}
+                            onChange={(e) => handleItemChange(item.id, 'value', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">Quantidade (ex: 100 UN)</label>
+                          <input
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">Valor unitário (USD)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
+                            value={item.unitPrice}
+                            onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">País de origem</label>
+                          <input
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
+                            value={item.origin}
+                            onChange={(e) => handleItemChange(item.id, 'origin', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
                       {items.length > 1 && (
                         <button
                           onClick={() => removeItem(item.id)}
@@ -3210,6 +3356,118 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                       )}
                     </button>
                   )}
+                </div>
+              </div>
+
+              {/* Bloco 2.5: Dados obrigatórios para DUIMP */}
+              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
+                <div className="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                  <h3 className="text-white font-semibold flex items-center gap-2">
+                    <span className="bg-accent-500 text-xs rounded px-2 py-0.5">2.5</span> Dados para DUIMP
+                  </h3>
+                  <span className="text-[11px] text-slate-500">Preencha para habilitar o XML</span>
+                </div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">CNPJ do Importador</label>
+                    <input
+                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="00.000.000/0000-00"
+                      value={duimpFields.cnpj}
+                      onChange={(e) => setDuimpFields({ ...duimpFields, cnpj: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Razão Social do Importador</label>
+                    <input
+                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Empresa Importadora LTDA"
+                      value={duimpFields.nome}
+                      onChange={(e) => setDuimpFields({ ...duimpFields, nome: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">UF do Importador</label>
+                    <input
+                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="SP"
+                      value={duimpFields.uf}
+                      onChange={(e) => setDuimpFields({ ...duimpFields, uf: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Código URF</label>
+                    <input
+                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Ex: 0817600 (Santos/SP)"
+                      value={duimpFields.codigoURF}
+                      onChange={(e) => setDuimpFields({ ...duimpFields, codigoURF: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Via de Transporte</label>
+                    <select
+                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                      value={duimpFields.viaTransporte}
+                      onChange={(e) => setDuimpFields({ ...duimpFields, viaTransporte: e.target.value })}
+                    >
+                      <option value="MARITIMO">Marítimo</option>
+                      <option value="AEREO">Aéreo</option>
+                      <option value="RODOVIARIO">Rodoviário</option>
+                      <option value="FERROVIARIO">Ferroviário</option>
+                      <option value="COURIER">Courier</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Tipo de Declaração</label>
+                    <select
+                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                      value={duimpFields.tipoDeclaracao}
+                      onChange={(e) => setDuimpFields({ ...duimpFields, tipoDeclaracao: e.target.value })}
+                    >
+                      <option value="CONSUMO">Consumo</option>
+                      <option value="ADMISSAO_TEMPORARIA">Admissão temporária</option>
+                      <option value="ENTREPOSTO">Entreposto</option>
+                      <option value="REIMPORTACAO">Reimportação</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Data de Embarque</label>
+                    <input
+                      type="date"
+                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                      value={duimpFields.dataEmbarque}
+                      onChange={(e) => setDuimpFields({ ...duimpFields, dataEmbarque: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1">Incoterm</label>
+                      <input
+                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="FOB"
+                        value={duimpFields.incoterm}
+                        onChange={(e) => setDuimpFields({ ...duimpFields, incoterm: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1">Moeda</label>
+                      <select
+                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
+                        value={duimpFields.moeda}
+                        onChange={(e) => setDuimpFields({ ...duimpFields, moeda: e.target.value })}
+                      >
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="BRL">BRL</option>
+                        <option value="CNY">CNY</option>
+                        <option value="GBP">GBP</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 text-[11px] text-slate-500">
+                  Dica: o peso bruto e valores por item são editáveis nos cartões de itens acima.
                 </div>
               </div>
 
