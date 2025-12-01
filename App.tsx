@@ -35,7 +35,8 @@ import {
   DollarSign,
   Lock,
   LogOut,
-  User
+  User,
+  Pen
 } from 'lucide-react';
 
 // --- API CLIENT ---
@@ -1720,6 +1721,7 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
     processingTimeMs: number;
     ncmConfidence: { alta: number; media: number; baixa: number };
   } | null>(null);
+  const [editEssentials, setEditEssentials] = useState(false);
 
   // Abrir modal de auth se veio da landing page
   useEffect(() => {
@@ -2992,44 +2994,73 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
           )}
 
           {/* Formulário Single-Column - CLEAN */}
-          <div className="space-y-6">
+          <div className="space-y-4">
               {/* Bloco 1: Dados Essenciais (País + Setor) */}
-              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                   <div>
-                     <label className="block text-xs text-slate-400 mb-1.5">País de Procedência</label>
-                     <select
-                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-xs uppercase text-slate-500 tracking-wide">Dados essenciais</div>
+                    <div className="text-[11px] text-accent-400">Preenchido automaticamente pela IA</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditEssentials(!editEssentials)}
+                    className="flex items-center gap-2 text-xs text-slate-300 hover:text-white px-3 py-1 rounded-lg bg-slate-800/60 border border-slate-700 transition-colors"
+                  >
+                    <Pen className="w-3.5 h-3.5" /> {editEssentials ? 'Fechar' : 'Editar'}
+                  </button>
+                </div>
+
+                {!editEssentials && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
+                      <div className="text-[11px] text-slate-500">País de Procedência</div>
+                      <div className="text-sm font-semibold text-white">{operationData.country || 'N/D'}</div>
+                    </div>
+                    <div className="bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
+                      <div className="text-[11px] text-slate-500">Setor do Produto</div>
+                      <div className="text-sm font-semibold text-white">{operationData.sector || 'N/D'}</div>
+                    </div>
+                  </div>
+                )}
+
+                {editEssentials && (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1">País de Procedência</label>
+                      <select
+                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
                         value={operationData.country}
                         onChange={(e) => setOperationData({...operationData, country: e.target.value})}
-                     >
-                       {PAISES_IMPORTADORES.map(pais => (
-                         <option key={pais} value={pais}>{pais}</option>
-                       ))}
-                     </select>
-                   </div>
-                   <div>
-                     <label className="block text-xs text-slate-400 mb-1.5">Setor do Produto</label>
-                     <select
-                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        {PAISES_IMPORTADORES.map(pais => (
+                          <option key={pais} value={pais}>{pais}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1">Setor do Produto</label>
+                      <select
+                        className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
                         value={operationData.sector}
                         onChange={(e) => setOperationData({...operationData, sector: e.target.value})}
-                     >
-                       <option>Outros</option>
-                       <option>Eletronicos</option>
-                       <option>Químico</option>
-                       <option>Cosméticos</option>
-                       <option>Alimentos/Bebidas</option>
-                       <option>Autopeças</option>
-                     </select>
-                   </div>
-                </div>
+                      >
+                        <option>Outros</option>
+                        <option>Eletronicos</option>
+                        <option>Químico</option>
+                        <option>Cosméticos</option>
+                        <option>Alimentos/Bebidas</option>
+                        <option>Autopeças</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 {/* Campos Avançados - Colapsável */}
                 <button
                   type="button"
                   onClick={() => setShowAdvancedFields(!showAdvancedFields)}
-                  className="w-full flex items-center justify-between text-xs text-slate-500 hover:text-slate-400 py-2 border-t border-slate-800 mt-2 transition-colors"
+                  className="w-full flex items-center justify-between text-xs text-slate-500 hover:text-slate-300 py-2 border-t border-slate-800 mt-3 transition-colors"
                 >
                   <span className="flex items-center gap-2">
                     <span className="w-1 h-1 rounded-full bg-slate-600"></span>
@@ -3046,11 +3077,11 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="grid grid-cols-2 gap-4 pt-4">
+                      <div className="grid grid-cols-2 gap-3 pt-3">
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1.5">Tipo de Operação</label>
+                          <label className="block text-[11px] text-slate-400 mb-1">Tipo de Operação</label>
                           <select
-                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
                             value={operationData.type}
                             onChange={(e) => setOperationData({...operationData, type: e.target.value})}
                           >
@@ -3060,9 +3091,9 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1.5">URF de Despacho</label>
+                          <label className="block text-[11px] text-slate-400 mb-1">URF de Despacho</label>
                           <select
-                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
                             value={operationData.urf}
                             onChange={(e) => setOperationData({...operationData, urf: e.target.value})}
                           >
@@ -3074,9 +3105,9 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1.5">Modalidade</label>
+                          <label className="block text-[11px] text-slate-400 mb-1">Modalidade</label>
                           <select
-                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-primary-500 focus:border-primary-500"
+                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:ring-primary-500 focus:border-primary-500"
                             value={operationData.modality}
                             onChange={(e) => setOperationData({...operationData, modality: e.target.value})}
                           >
@@ -3092,8 +3123,8 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
               </div>
 
               {/* Bloco 2: Itens e NCM */}
-              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-sm">
-                <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-2">
+              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
+                <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
                   <h3 className="text-white font-semibold flex items-center gap-2">
                     <span className="bg-primary-600 text-xs rounded px-2 py-0.5">2</span> Itens e NCM
                   </h3>
@@ -3102,7 +3133,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                   </button>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {(showAllItems ? items : items.slice(0, 2)).map((item, index) => (
                     <div key={item.id} className="relative bg-slate-950/50 p-4 rounded-lg border border-slate-800">
                       {/* Layout Clean - Descrição + NCM com badge */}
@@ -3183,8 +3214,8 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
               </div>
 
               {/* Bloco 3: Compliance & Action */}
-              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-sm">
-                 <h3 className="text-white font-semibold flex items-center gap-2 mb-4">
+              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
+                 <h3 className="text-white font-semibold flex items-center gap-2 mb-3">
                     <span className="bg-primary-600 text-xs rounded px-2 py-0.5">3</span> Compliance (Simulação)
                  </h3>
                  
