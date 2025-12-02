@@ -3709,32 +3709,55 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
 
           {/* Resultados da Simulação - Compacto */}
           {results && (
-            <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-white font-semibold flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-green-400" /> Resultado da Simulação
-                </h4>
-                <button
-                  onClick={() => setShowReport(true)}
-                  className="text-xs text-primary-400 hover:text-primary-300 underline underline-offset-2"
-                >
-                  Ver detalhes
-                </button>
+            <div className="mt-8 space-y-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-white font-semibold flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-green-400" /> Resultado da Simulação
+                  </h4>
+                  <button
+                    onClick={() => setShowReport(true)}
+                    className="text-xs text-primary-400 hover:text-primary-300 underline underline-offset-2"
+                  >
+                    Ver detalhes completos
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                  <div className="bg-slate-950 rounded-lg p-3">
+                    <div className="text-xs text-slate-500 mb-1 uppercase tracking-wide">Riscos detectados</div>
+                    <div className="text-lg font-bold text-orange-400">{results.risks.length}</div>
+                    <p className="text-[11px] text-slate-500 mt-1">Itens com atenção imediata</p>
+                  </div>
+                  <div className="bg-slate-950 rounded-lg p-3">
+                    <div className="text-xs text-slate-500 mb-1 uppercase tracking-wide">Impacto estimado</div>
+                    <div className="text-lg font-bold text-red-400">{results.totalImpact}</div>
+                    <p className="text-[11px] text-slate-500 mt-1">Potencial de multas/demurrage</p>
+                  </div>
+                  <div className="bg-slate-950 rounded-lg p-3">
+                    <div className="text-xs text-slate-500 mb-1 uppercase tracking-wide">Economia prevista</div>
+                    <div className="text-lg font-bold text-green-400">{results.avoided}</div>
+                    <p className="text-[11px] text-slate-500 mt-1">Ao corrigir agora</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-slate-950 rounded-lg p-3">
-                  <div className="text-xs text-slate-500 mb-1">Riscos</div>
-                  <div className="text-lg font-bold text-orange-400">{results.risks.length}</div>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-2 text-slate-300 text-sm font-semibold">
+                  <AlertTriangle className="w-4 h-4 text-orange-400" />
+                  Próximos passos recomendados
                 </div>
-                <div className="bg-slate-950 rounded-lg p-3">
-                  <div className="text-xs text-slate-500 mb-1">Impacto</div>
-                  <div className="text-lg font-bold text-red-400">{results.totalImpact}</div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="bg-slate-950 rounded-lg p-3 border border-slate-800">
+                    <p className="text-xs text-slate-500 uppercase mb-1">Prioridade 1</p>
+                    <p className="text-sm text-white">{results.risks[0] || 'Sem alertas críticos'}</p>
+                  </div>
+                  <div className="bg-slate-950 rounded-lg p-3 border border-slate-800">
+                    <p className="text-xs text-slate-500 uppercase mb-1">Prioridade 2</p>
+                    <p className="text-sm text-white">{results.risks[1] || 'Validação de anuentes em andamento'}</p>
+                  </div>
                 </div>
-                <div className="bg-slate-950 rounded-lg p-3">
-                  <div className="text-xs text-slate-500 mb-1">Economia</div>
-                  <div className="text-lg font-bold text-green-400">{results.avoided}</div>
-                </div>
+                <div className="text-[11px] text-slate-500">Finalize ajustes e exporte o XML quando estiver tudo verde.</div>
               </div>
             </div>
           )}
