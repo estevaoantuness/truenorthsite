@@ -41,6 +41,7 @@ import {
 
 // --- API CLIENT ---
 import * as api from './api';
+import jsPDF from 'jspdf';
 
 // --- CONSTANTES & CONFIGURAÇÃO ---
 const COLORS = {
@@ -2065,8 +2066,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
   };
 
   // Função para exportar DUIMP como PDF
-  const handleExportDUIMP = async () => {
-    const { default: jsPDF } = await import('jspdf');
+  const handleExportDUIMP = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 20;
