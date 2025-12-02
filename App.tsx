@@ -3968,6 +3968,7 @@ export default function App() {
     setAuthMode(mode);
     setAuthError(null);
     setShowAuthModal(true);
+    setCurrentScreen((screen) => screen); // não muda de tela
   };
 
   const handleLogin = async (email: string, password: string) => {
@@ -4054,7 +4055,6 @@ export default function App() {
       ) : (
         <PlatformSimulationPage
           onNavigateHome={navigateHome}
-          openAuthOnMount={false}
           currentUser={currentUser}
           onLogout={handleLogout}
           onOpenAuth={openAuth}
