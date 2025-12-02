@@ -738,7 +738,7 @@ const HowItWorks = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
            {[
              { title: "Upload", desc: "Arraste seu PDF, XML ou foto da invoice comercial. Aceitamos qualquer formato legível.", icon: <FileText className="w-6 h-6" /> },
-             { title: "Extração IA", desc: "Nossa IA extrai fornecedor, itens, valores e sugere NCM com nível de confiança.", icon: <Sparkles className="w-6 h-6" /> },
+             { title: "Extração IA", desc: "Nossa IA (Gemini 2.0) extrai fornecedor, itens, valores e sugere NCM com nível de confiança.", icon: <Sparkles className="w-6 h-6" /> },
              { title: "Resultado", desc: "Veja impostos estimados (II, IPI, PIS/COFINS), anuentes necessários e exporte XML para Siscomex.", icon: <CheckCircle2 className="w-6 h-6" /> }
            ].map((item, i) => (
              <div key={i} className="bg-slate-900/50 p-8 rounded-2xl border border-slate-800 hover:border-slate-700 transition-colors">
@@ -795,8 +795,8 @@ const BenefitsSection = () => {
                    </div>
                    <div className="flex items-center gap-3">
                      <Sparkles className="w-5 h-5 text-accent-400" />
-                     <span className="text-slate-300">Motor proprietário de IA</span>
-                  </div>
+                     <span className="text-slate-300">Powered by Gemini 2.0 Flash</span>
+                   </div>
                    <div className="flex items-center gap-3">
                      <Download className="w-5 h-5 text-green-400" />
                      <span className="text-slate-300">XML Siscomex pronto</span>
@@ -931,7 +931,7 @@ const Footer = () => {
         </div>
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
            <p className="text-slate-500 text-sm">© {new Date().getFullYear()} TrueNorth. Todos os direitos reservados.</p>
-           <p className="text-slate-600 text-xs">Motor proprietário de IA</p>
+           <p className="text-slate-600 text-xs">Powered by Gemini 2.0 Flash</p>
         </div>
       </div>
     </footer>
