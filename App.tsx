@@ -2664,7 +2664,6 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
                           }}
                           className="w-full text-left bg-slate-900 border border-slate-800 rounded-lg p-4 flex items-center justify-between hover:border-primary-600/60 hover:bg-slate-900/70 transition-colors"
-                          title={feedback}
                         >
                           <div className="flex items-center gap-4">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -2749,35 +2748,29 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                   />
                 </div>
 
-               {/* Status de processamento */}
-               <div className="space-y-2 text-sm text-slate-400">
-                 <div className={`flex items-center justify-center gap-2 ${processingProgress > 15 ? 'text-green-400' : ''}`}>
-                   {processingProgress > 15 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
-                   Lendo documento...
-                 </div>
-                 <div className={`flex items-center justify-center gap-2 ${processingProgress > 35 ? 'text-green-400' : ''}`}>
-                   {processingProgress > 35 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
-                   Extraindo dados dos itens...
-                 </div>
-                 <div className={`flex items-center justify-center gap-2 ${processingProgress > 55 ? 'text-green-400' : ''}`}>
-                   {processingProgress > 55 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
-                   Classificando NCMs...
-                 </div>
-                 <div className={`flex items-center justify-center gap-2 ${processingProgress > 75 ? 'text-green-400' : ''}`}>
-                   {processingProgress > 75 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
-                   Verificando anuentes...
-                 </div>
-                 <div className={`flex items-center justify-center gap-2 ${processingProgress > 90 ? 'text-green-400' : ''}`}>
-                   {processingProgress > 90 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
-                   Calculando impostos...
-                 </div>
-               </div>
-               {/* Skeleton cards */}
-               <div className="mt-10 grid grid-cols-2 gap-3">
-                 {[1, 2, 3, 4].map((i) => (
-                   <div key={i} className="h-16 rounded-lg bg-slate-800 animate-pulse border border-slate-700"></div>
-                 ))}
-               </div>
+                {/* Status de processamento */}
+                <div className="space-y-2 text-sm text-slate-400">
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 15 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 15 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Lendo documento...
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 35 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 35 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Extraindo dados dos itens...
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 55 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 55 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Classificando NCMs...
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 75 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 75 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Verificando anuentes...
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 ${processingProgress > 90 ? 'text-green-400' : ''}`}>
+                    {processingProgress > 90 ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 border-2 border-slate-600 rounded-full animate-spin border-t-primary-500" />}
+                    Calculando impostos...
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2836,10 +2829,24 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                     <motion.div className="bg-gradient-to-br from-green-900/30 to-green-950/30 rounded-xl p-4 border border-green-800/30" variants={simItemVariants}>
                       <div className="flex items-center gap-2 mb-2">
                         <ShieldCheck className="w-4 h-4 text-green-400" />
-                        <span className="text-xs text-green-400 uppercase tracking-wider">Resumo da IA</span>
+                        <span className="text-xs text-green-400 uppercase tracking-wider">NCM Confiança</span>
                       </div>
-                      <div className="text-sm text-slate-200">
-                        {aiFeedback || 'Análise automática concluída.'}
+                      <div className="flex items-center gap-2">
+                        {extractionSummary.ncmConfidence.alta > 0 && (
+                          <span className="bg-green-500/20 text-green-400 text-sm font-bold px-2 py-1 rounded">
+                            {extractionSummary.ncmConfidence.alta} ALTA
+                          </span>
+                        )}
+                        {extractionSummary.ncmConfidence.media > 0 && (
+                          <span className="bg-yellow-500/20 text-yellow-400 text-sm font-bold px-2 py-1 rounded">
+                            {extractionSummary.ncmConfidence.media} MÉD
+                          </span>
+                        )}
+                        {extractionSummary.ncmConfidence.baixa > 0 && (
+                          <span className="bg-red-500/20 text-red-400 text-sm font-bold px-2 py-1 rounded">
+                            {extractionSummary.ncmConfidence.baixa} BAIXA
+                          </span>
+                        )}
                       </div>
                     </motion.div>
                   </div>
