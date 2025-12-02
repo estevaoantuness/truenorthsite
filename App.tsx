@@ -1107,7 +1107,6 @@ const Navbar = ({ onSimulateClick, onOpenAuth }: { onSimulateClick: () => void; 
               <button onClick={() => scrollToSection('produto')} className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Produto</button>
               <button onClick={() => scrollToSection('como-funciona')} className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Como Funciona</button>
               <button onClick={() => scrollToSection('para-quem')} className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Para Quem</button>
-              <button onClick={() => scrollToSection('perfil')} className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Perfil</button>
               {/* Botão Simulação agora muda de tela */}
               <button onClick={onSimulateClick} className="text-accent-400 hover:text-accent-300 px-3 py-2 rounded-md text-sm font-medium transition-colors">Simulação</button>
               <button onClick={() => scrollToSection('contato')} className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Contato</button>
@@ -1140,7 +1139,6 @@ const Navbar = ({ onSimulateClick, onOpenAuth }: { onSimulateClick: () => void; 
               <button onClick={() => scrollToSection('produto')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Produto</button>
               <button onClick={() => scrollToSection('como-funciona')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Como Funciona</button>
               <button onClick={() => scrollToSection('para-quem')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Para Quem</button>
-              <button onClick={() => scrollToSection('perfil')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Perfil</button>
               <button onClick={() => { setIsOpen(false); onSimulateClick(); }} className="text-accent-400 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Simulação</button>
               <button onClick={() => scrollToSection('contato')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Contato</button>
               <button
@@ -1394,7 +1392,6 @@ const LandingPage = ({ onNavigateToSimulation, onOpenAuth }: { onNavigateToSimul
       <BenefitsSection />
       <AboutSectionWithShip />
       <ForWhomSection />
-      <ProfileSection />
       <CTASection onSimulateClick={onNavigateToSimulation} />
       <Footer />
     </>
@@ -1808,22 +1805,6 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
     incoterm: 'FOB',
     moeda: 'USD'
   });
-  const [profilePrefs, setProfilePrefs] = useState({
-    language: 'pt-BR',
-    currency: 'USD',
-    notifyEmail: true,
-    notifyWebhook: false,
-    corsOrigins: 'https://www.truenorth.app.br'
-  });
-  const [apiTokens] = useState([
-    { id: 'tok_live_xa21', label: 'Produção', lastUsed: 'há 2h' },
-    { id: 'tok_sandbox_qp88', label: 'Sandbox', lastUsed: 'ontem' },
-  ]);
-  const [activityLog] = useState([
-    { id: 1, action: 'Exportou XML DUIMP', time: 'há 12m' },
-    { id: 2, action: 'Validou operação com risco alto', time: 'há 3h' },
-    { id: 3, action: 'Criou operação demo (cosméticos)', time: 'ontem' },
-  ]);
 
   const [items, setItems] = useState([
     { id: 1, desc: '', ncm: '', weight: '', value: '', unitPrice: '', quantity: '', origin: '' }
@@ -1856,6 +1837,7 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
   const [processingProgress, setProcessingProgress] = useState(0);
   const [showDocumentPreview, setShowDocumentPreview] = useState(false);
   const [timeStats, setTimeStats] = useState({ started: 0, ended: 0, saved: 17 }); // minutos economizados
+  const [showProfile, setShowProfile] = useState(false);
 
   // --- ESTADOS PARA INTEGRAÇÃO COM API REAL ---
   const [currentOperationId, setCurrentOperationId] = useState<string | null>(null);
@@ -2442,10 +2424,6 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
     return { quantity, unit };
   };
 
-  const togglePref = (key: 'notifyEmail' | 'notifyWebhook') => {
-    setProfilePrefs((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const buildExportOverrides = (): api.ExportOverrides => {
     const itemOverrides = items.map((item, idx) => {
       const { quantity, unit } = parseQuantityUnit(item.quantity || '');
@@ -2593,24 +2571,28 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
               <Anchor className="h-6 w-6 text-accent-500" />
               <span className="font-bold text-lg tracking-tight text-white">TrueNorth</span>
            </div>
-           <div className="flex items-center gap-3">
-             {currentUser && (
-               <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg border border-slate-700">
-                 <User className="w-4 h-4 text-primary-400" />
-                 <span className="text-sm text-slate-300">{currentUser.name || currentUser.email}</span>
-                 <button
-                   onClick={handleLogout}
-                   className="ml-1 p-1 hover:bg-slate-700 rounded transition-colors"
-                   title="Sair"
-                 >
-                   <LogOut className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
-                 </button>
-               </div>
-             )}
-             <button
-               onClick={onNavigateHome}
-               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-sm font-medium transition-colors"
-             >
+      <div className="flex items-center gap-3">
+        {currentUser && (
+          <button
+            onClick={() => setShowProfile((prev) => !prev)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg border border-slate-700 hover:border-primary-500 transition-colors"
+            title="Abrir perfil"
+          >
+            <User className="w-4 h-4 text-primary-400" />
+            <span className="text-sm text-slate-300">{currentUser.name || currentUser.email}</span>
+            <button
+              onClick={handleLogout}
+              className="ml-1 p-1 hover:bg-slate-700 rounded transition-colors"
+              title="Sair"
+            >
+              <LogOut className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
+            </button>
+          </button>
+        )}
+        <button
+          onClick={onNavigateHome}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-sm font-medium transition-colors"
+        >
                <Home className="w-4 h-4" /> Home
              </button>
            </div>
@@ -2858,6 +2840,13 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Perfil dentro da simulação */}
+          {showProfile && (
+            <div className="max-w-6xl mx-auto mb-8">
+              <ProfileSection />
             </div>
           )}
 
