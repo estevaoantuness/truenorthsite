@@ -1398,10 +1398,10 @@ const AuthModal = ({ isOpen, onClose, mode, setMode, onLogin, onRegister, loadin
   );
 };
 
-const LandingPage = ({ onNavigateToSimulation, onOpenAuth }: { onNavigateToSimulation: () => void; onOpenAuth: () => void }) => {
+const LandingPage = ({ onNavigateToSimulation, onOpenAuth, currentUser }: { onNavigateToSimulation: () => void; onOpenAuth: () => void; currentUser: api.User | null }) => {
   return (
     <>
-      <Navbar onSimulateClick={onNavigateToSimulation} onOpenAuth={onOpenAuth} />
+      <Navbar onSimulateClick={onNavigateToSimulation} onOpenAuth={onOpenAuth} currentUser={currentUser} />
       <Hero onSimulateClick={onNavigateToSimulation} />
       <HighLevelFlow />
       <HowItWorks />
@@ -4067,7 +4067,7 @@ export default function App() {
       )}
 
       {currentScreen === 'landing' ? (
-        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={() => openAuth('login')} />
+        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={() => openAuth('login')} currentUser={currentUser} />
       ) : (
         <PlatformSimulationPage
           onNavigateHome={navigateHome}
