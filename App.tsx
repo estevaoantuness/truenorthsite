@@ -1076,7 +1076,7 @@ const Footer = () => {
 // --- PÁGINAS PRINCIPAIS ---
 
 // 1. LANDING PAGE WRAPPER
-const Navbar = ({ onSimulateClick, onOpenAuth }: { onSimulateClick: () => void; onOpenAuth: () => void }) => {
+const Navbar = ({ onSimulateClick, onOpenAuth, currentUser }: { onSimulateClick: () => void; onOpenAuth: () => void; currentUser: api.User | null }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -1113,12 +1113,19 @@ const Navbar = ({ onSimulateClick, onOpenAuth }: { onSimulateClick: () => void; 
             </div>
           </div>
           <div className="hidden md:block">
-            <button
-              onClick={onOpenAuth}
-              className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-primary-600/20 hover:shadow-primary-600/40"
-            >
-              Entrar / Cadastrar
-            </button>
+            {currentUser ? (
+              <div className="flex items-center gap-3 bg-slate-800/50 border border-slate-700 px-3 py-2 rounded-lg">
+                <User className="w-4 h-4 text-primary-400" />
+                <span className="text-sm text-slate-200">{currentUser.name || currentUser.email}</span>
+              </div>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-primary-600/20 hover:shadow-primary-600/40"
+              >
+                Entrar / Cadastrar
+              </button>
+            )}
           </div>
           <div className="-mr-2 flex md:hidden">
             <button onClick={() => setIsOpen(!isOpen)} className="text-slate-400 hover:text-white p-2">
@@ -1141,12 +1148,21 @@ const Navbar = ({ onSimulateClick, onOpenAuth }: { onSimulateClick: () => void; 
               <button onClick={() => scrollToSection('para-quem')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Para Quem</button>
               <button onClick={() => { setIsOpen(false); onSimulateClick(); }} className="text-accent-400 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Simulação</button>
               <button onClick={() => scrollToSection('contato')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Contato</button>
-              <button
-                onClick={() => { setIsOpen(false); onOpenAuth(); }}
-                className="w-full text-left bg-primary-600 text-white px-3 py-2 rounded-md text-base font-medium mt-4 shadow-md"
-              >
-                Entrar / Cadastrar
-              </button>
+              {currentUser ? (
+                <div className="w-full text-left bg-slate-800/60 text-white px-3 py-2 rounded-md text-base font-medium mt-4 border border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary-400" />
+                    <span className="text-sm">{currentUser.name || currentUser.email}</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setIsOpen(false); onOpenAuth(); }}
+                  className="w-full text-left bg-primary-600 text-white px-3 py-2 rounded-md text-base font-medium mt-4 shadow-md"
+                >
+                  Entrar / Cadastrar
+                </button>
+              )}
             </div>
           </motion.div>
         )}
