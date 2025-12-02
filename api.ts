@@ -99,6 +99,16 @@ export function logout(): void {
 }
 
 // Tipos
+export interface IncotermInfo {
+  code: string;
+  location?: string;
+  location_type?: 'port' | 'airport' | 'city' | 'factory';
+  country_code?: string;
+  validated?: boolean;
+  validation_message?: string;
+  suggestions?: string[];
+}
+
 export interface ExtractedData {
   invoice_number: string;
   invoice_date: string;
@@ -112,6 +122,7 @@ export interface ExtractedData {
     cnpj: string;
   };
   incoterm: string | null;
+  incoterm_info?: IncotermInfo;
   currency: string;
   total_value: number;
   freight: number | null;

@@ -2086,6 +2086,7 @@ const PlatformSimulationPage = ({
     invoice_number: string;
     supplier: { name: string; country: string };
   } | null>(null);
+  const [incotermInfo, setIncotermInfo] = useState<api.IncotermInfo | undefined>(undefined);
 
   // --- ESTADOS PARA UX CLEAN (Summary Card + Campos Avançados) ---
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
@@ -2136,6 +2137,7 @@ const PlatformSimulationPage = ({
     setTimeStats({ ...timeStats, started: Date.now() });
     setUploadedFileName(file.name);
     setSelectedInvoice(null); // Not using sample invoice
+    setIncotermInfo(undefined);
 
     try {
       // Step 1: Upload & Process (0-70%) - Now done in single call
@@ -2202,6 +2204,7 @@ const PlatformSimulationPage = ({
         invoice_number: extractedData?.invoice_number || 'N/A',
         supplier: extractedData?.supplier || { name: 'N/A', country: 'N/A' }
       });
+      setIncotermInfo(extractedData?.incoterm_info);
 
       // Calculate time saved
       const processingTimeMs = Date.now() - timeStats.started;
@@ -3225,6 +3228,53 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                   <div className="text-sm font-medium text-orange-400 mb-1">Alerta de Subfaturamento</div>
                   <p className="text-white/90 text-sm leading-relaxed">{alertaSubfaturamento}</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* === INCOTERM & PORTO === */}
+          {(incotermInfo || duimpFields.incoterm) && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Anchor className="w-5 h-5 text-accent-400" />
+                  <h3 className="text-sm font-semibold text-white">Incoterm & Porto</h3>
+                </div>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full border ${
+                    incotermInfo?.validated === false
+                      ? 'text-amber-300 border-amber-500/50 bg-amber-500/10'
+                      : 'text-green-300 border-green-500/40 bg-green-500/10'
+                  }`}
+                >
+                  {incotermInfo?.validated === false ? 'Atenção' : 'Validado'}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 text-sm text-slate-200">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-primary-300 bg-primary-500/10 border border-primary-500/30 px-2 py-1 rounded">
+                    {incotermInfo?.code || duimpFields.incoterm || 'N/A'}
+                  </span>
+                  {incotermInfo?.location && (
+                    <span className="text-slate-300">
+                      {incotermInfo.location} {incotermInfo.country_code ? `(${incotermInfo.country_code})` : ''}
+                    </span>
+                  )}
+                  {!incotermInfo?.location && duimpFields.incoterm && (
+                    <span className="text-slate-400">Local não especificado</span>
+                  )}
+                </div>
+                {incotermInfo?.validation_message && (
+                  <div className="text-xs text-amber-300 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5" />
+                    <span>{incotermInfo.validation_message}</span>
+                  </div>
+                )}
+                {incotermInfo?.suggestions && incotermInfo.suggestions.length > 0 && (
+                  <div className="text-xs text-slate-400">
+                    Sugestões de portos: <span className="text-slate-200">{incotermInfo.suggestions.join(', ')}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
