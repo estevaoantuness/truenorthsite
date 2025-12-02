@@ -1786,7 +1786,17 @@ const ReportModal = ({
   );
 };
 
-const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { onNavigateHome: () => void; openAuthOnMount?: boolean }) => {
+const PlatformSimulationPage = ({
+  onNavigateHome,
+  currentUser,
+  onLogout,
+  onOpenAuth,
+}: {
+  onNavigateHome: () => void;
+  currentUser: api.User | null;
+  onLogout: () => void;
+  onOpenAuth: (mode: 'login' | 'register') => void;
+}) => {
   const [operationData, setOperationData] = useState({
     type: 'Importação Própria',
     urf: 'Santos (SP)',
@@ -1850,13 +1860,6 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
   const [operationsStats, setOperationsStats] = useState<api.OperationsStats | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // --- ESTADOS DE AUTENTICAÇÃO ---
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState<api.User | null>(() => api.getStoredUser());
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-
   // --- ESTADOS PARA NOVO LAYOUT ---
   const [showFichaModal, setShowFichaModal] = useState(false);
   const [errorsExpanded, setErrorsExpanded] = useState(false);
@@ -1890,71 +1893,6 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
     ncmConfidence: { alta: number; media: number; baixa: number };
   } | null>(null);
   const [editEssentials, setEditEssentials] = useState(false);
-  const [authTransition, setAuthTransition] = useState(false);
-
-  // Abrir modal de auth se veio da landing page
-  useEffect(() => {
-    if (openAuthOnMount && !currentUser) {
-      setShowAuthModal(true);
-    }
-  }, [openAuthOnMount]);
-
-  // Verificar token armazenado ao carregar
-  useEffect(() => {
-    const token = api.getStoredToken();
-    if (token && !currentUser) {
-      api.getCurrentUser(token)
-        .then(({ user }) => {
-          setCurrentUser(user);
-          api.setStoredUser(user);
-        })
-        .catch(() => {
-          api.logout();
-          setCurrentUser(null);
-        });
-    }
-  }, []);
-
-  const handleLogin = async (email: string, password: string) => {
-    setAuthLoading(true);
-    setAuthError(null);
-    try {
-      const { user, token } = await api.login(email, password);
-      api.setStoredToken(token);
-      api.setStoredUser(user);
-      setCurrentUser(user);
-      setShowAuthModal(false);
-      setAuthTransition(true);
-      setTimeout(() => setAuthTransition(false), 2000);
-    } catch (error: any) {
-      setAuthError(error.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleRegister = async (email: string, password: string, confirmPassword: string, name?: string) => {
-    setAuthLoading(true);
-    setAuthError(null);
-    try {
-      const { user, token } = await api.register(email, password, confirmPassword, name);
-      api.setStoredToken(token);
-      api.setStoredUser(user);
-      setCurrentUser(user);
-      setShowAuthModal(false);
-      setAuthTransition(true);
-      setTimeout(() => setAuthTransition(false), 2000);
-    } catch (error: any) {
-      setAuthError(error.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    api.logout();
-    setCurrentUser(null);
-  };
 
   // Carrega histórico de operações
   const loadOperationsHistory = async () => {
@@ -1982,7 +1920,7 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
   const handleFileUpload = async (file: File) => {
     // Verificar se usuário está logado antes de fazer upload
     if (!currentUser) {
-      setShowAuthModal(true);
+      onOpenAuth('login');
       return;
     }
 
@@ -2088,7 +2026,7 @@ const PlatformSimulationPage = ({ onNavigateHome, openAuthOnMount = false }: { o
       console.error('Error processing file:', error);
       // Se erro de autenticação, mostrar modal de login
       if (error.message.includes('Autenticação') || error.message.includes('logado') || error.message.includes('Token')) {
-        setShowAuthModal(true);
+        onOpenAuth('login');
       } else {
         alert('Erro ao processar arquivo: ' + error.message);
       }
@@ -2468,9 +2406,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
   // Handler do botão que verifica autenticação antes de rodar a simulação
   const handleSimulationClick = () => {
     if (!currentUser) {
-      setAuthMode('login');
-      setAuthError(null);
-      setShowAuthModal(true);
+      onOpenAuth('login');
       return;
     }
     runSimulation();
@@ -2565,15 +2501,6 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 font-sans selection:bg-primary-600 selection:text-white">
-      {authTransition && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-br from-slate-950 via-primary-900/80 to-slate-950">
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 border-4 border-primary-400/40 border-t-primary-400 rounded-full animate-spin mx-auto"></div>
-            <div className="text-lg font-semibold text-white">Entrando na sua conta</div>
-            <div className="text-sm text-slate-300">Sincronizando preferências e histórico...</div>
-          </div>
-        </div>
-      )}
       {/* Simulation Header */}
       <nav className="border-b border-slate-800 bg-slate-950/95 sticky top-0 z-50 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -2583,21 +2510,23 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
            </div>
       <div className="flex items-center gap-3">
         {currentUser && (
-          <button
-            onClick={() => setShowProfile((prev) => !prev)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg border border-slate-700 hover:border-primary-500 transition-colors"
-            title="Abrir perfil"
-          >
-            <User className="w-4 h-4 text-primary-400" />
-            <span className="text-sm text-slate-300">{currentUser.name || currentUser.email}</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg border border-slate-700">
             <button
-              onClick={handleLogout}
+              onClick={() => setShowProfile((prev) => !prev)}
+              className="flex items-center gap-2 hover:text-white text-slate-300"
+              title="Abrir perfil"
+            >
+              <User className="w-4 h-4 text-primary-400" />
+              <span className="text-sm">{currentUser.name || currentUser.email}</span>
+            </button>
+            <button
+              onClick={onLogout}
               className="ml-1 p-1 hover:bg-slate-700 rounded transition-colors"
               title="Sair"
             >
               <LogOut className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
             </button>
-          </button>
+          </div>
         )}
         <button
           onClick={onNavigateHome}
@@ -2610,17 +2539,6 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
       </nav>
 
       {/* Modal de Autenticação */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        mode={authMode}
-        setMode={setAuthMode}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-        loading={authLoading}
-        error={authError}
-      />
-
       <main className="py-12 md:py-16">
         <AnimatePresence>
           {showReport && results && (
@@ -4027,35 +3945,120 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'landing' | 'simulation'>('landing');
-  const [shouldOpenAuth, setShouldOpenAuth] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authTransition, setAuthTransition] = useState(false);
+  const [currentUser, setCurrentUser] = useState<api.User | null>(() => api.getStoredUser());
 
   // Função para navegar para a simulação (rola para o topo)
   const navigateToSimulation = () => {
-    setShouldOpenAuth(false);
-    setCurrentScreen('simulation');
-    window.scrollTo(0, 0);
-  };
-
-  // Função para navegar para a simulação E abrir auth modal
-  const navigateToAuth = () => {
-    setShouldOpenAuth(true);
     setCurrentScreen('simulation');
     window.scrollTo(0, 0);
   };
 
   // Função para voltar para a home (rola para o topo)
   const navigateHome = () => {
-    setShouldOpenAuth(false);
     setCurrentScreen('landing');
     window.scrollTo(0, 0);
   };
 
+  const openAuth = (mode: 'login' | 'register') => {
+    setAuthMode(mode);
+    setAuthError(null);
+    setShowAuthModal(true);
+  };
+
+  const handleLogin = async (email: string, password: string) => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const { user, token } = await api.login(email, password);
+      api.setStoredToken(token);
+      api.setStoredUser(user);
+      setCurrentUser(user);
+      setShowAuthModal(false);
+      setAuthTransition(true);
+      setTimeout(() => setAuthTransition(false), 2000);
+    } catch (error: any) {
+      setAuthError(error.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRegister = async (email: string, password: string, confirmPassword: string, name?: string) => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const { user, token } = await api.register(email, password, confirmPassword, name);
+      api.setStoredToken(token);
+      api.setStoredUser(user);
+      setCurrentUser(user);
+      setShowAuthModal(false);
+      setAuthTransition(true);
+      setTimeout(() => setAuthTransition(false), 2000);
+    } catch (error: any) {
+      setAuthError(error.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    api.logout();
+    setCurrentUser(null);
+  };
+
+  useEffect(() => {
+    const token = api.getStoredToken();
+    if (token && !currentUser) {
+      api.getCurrentUser(token)
+        .then(({ user }) => {
+          setCurrentUser(user);
+          api.setStoredUser(user);
+        })
+        .catch(() => {
+          api.logout();
+          setCurrentUser(null);
+        });
+    }
+  }, [currentUser]);
+
   return (
     <>
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        mode={authMode}
+        setMode={setAuthMode}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        loading={authLoading}
+        error={authError}
+      />
+
+      {authTransition && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-br from-slate-950 via-primary-900/80 to-slate-950">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 border-4 border-primary-400/40 border-t-primary-400 rounded-full animate-spin mx-auto"></div>
+            <div className="text-lg font-semibold text-white">Entrando na sua conta</div>
+            <div className="text-sm text-slate-300">Sincronizando preferências e histórico...</div>
+          </div>
+        </div>
+      )}
+
       {currentScreen === 'landing' ? (
-        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={navigateToAuth} />
+        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={() => openAuth('login')} />
       ) : (
-        <PlatformSimulationPage onNavigateHome={navigateHome} openAuthOnMount={shouldOpenAuth} />
+        <PlatformSimulationPage
+          onNavigateHome={navigateHome}
+          openAuthOnMount={false}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onOpenAuth={openAuth}
+        />
       )}
     </>
   );
