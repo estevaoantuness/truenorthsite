@@ -125,6 +125,11 @@ export interface ExtractedData {
     ncm_sugerido: string | null;
     ncm_descricao?: string;
     ncm_confianca?: 'ALTA' | 'MEDIA' | 'BAIXA';
+    ncm_fonte: 'documento' | 'recomendado';  // Origem do NCM
+    ncm_documento?: string;   // NCM original do documento (se existir)
+    ncm_editado?: string;     // NCM corrigido pelo usuário
+    ncm_editado_por?: string; // userId
+    ncm_editado_em?: string;  // ISO timestamp
     peso_kg: number | null;
     origem: string | null;
     anuentes_necessarios?: string[];
@@ -622,4 +627,41 @@ export async function exportSiscomexXml(operationId: string, overrides?: ExportO
   a.click();
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
+}
+
+// Editar NCM de um item da operação
+export async function updateItemNcm(
+  operationId: string,
+  itemIndex: number,
+  ncm: string
+): Promise<{
+  success: boolean;
+  message: string;
+  item: {
+    index: number;
+    ncm_editado: string;
+    ncm_descricao: string;
+    ncm_editado_em: string;
+  };
+}> {
+  const token = getStoredToken();
+  if (!token) {
+    throw new Error('Você precisa estar logado para editar');
+  }
+
+  const response = await fetch(`${API_URL}/api/operations/${operationId}/items/${itemIndex}/ncm`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ncm }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao atualizar NCM');
+  }
+
+  return response.json();
 }
