@@ -167,37 +167,51 @@ function NcmBadge({ item, idx, operationId, onNcmUpdate }: NcmBadgeProps) {
 
   return (
     <div className="relative inline-flex items-center gap-1">
-      {/* Badge NCM */}
-      <span className={`px-2 py-0.5 rounded text-xs font-mono ${badgeClass}`}>
-        {ncmDisplay}
-      </span>
+      {/* Badge NCM com label de fonte */}
+      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono ${badgeClass}`}>
+        {/* Label de fonte */}
+        {isRecommended && (
+          <span className="px-1 py-0.5 bg-yellow-500/30 text-yellow-300 rounded text-[10px] font-bold">
+            IA
+          </span>
+        )}
+        {isFromDocument && !isEdited && (
+          <span className="px-1 py-0.5 bg-green-500/30 text-green-300 rounded text-[10px] font-bold">
+            DOC
+          </span>
+        )}
+        {isEdited && (
+          <span className="px-1 py-0.5 bg-blue-500/30 text-blue-300 rounded text-[10px] font-bold">
+            EDIT
+          </span>
+        )}
+        <span>{ncmDisplay}</span>
+      </div>
 
-      {/* Info icon for recommended NCM */}
+      {/* Info icon for recommended NCM - Clicável para ver detalhes */}
       {isRecommended && (
         <button
           onClick={() => setShowTooltip(!showTooltip)}
-          className="p-0.5 hover:bg-slate-700 rounded-full transition-colors"
-          title="NCM recomendado pela IA"
+          className="p-0.5 hover:bg-slate-700 rounded-full transition-colors animate-pulse"
+          title="NCM recomendado pela IA - Clique para revisar"
         >
-          <Info className="w-3.5 h-3.5 text-yellow-400" />
+          <AlertCircle className="w-4 h-4 text-yellow-400" />
         </button>
-      )}
-
-      {/* Edited indicator */}
-      {isEdited && (
-        <span className="text-xs text-blue-400">(editado)</span>
       )}
 
       {/* Tooltip */}
       {showTooltip && (
-        <div className="absolute z-50 top-full right-0 mt-1 p-3 bg-slate-800 border border-slate-700 rounded-lg shadow-xl w-72">
-          <div className="flex items-start gap-2 mb-2">
-            <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+        <div className="absolute z-50 top-full right-0 mt-1 p-3 bg-slate-800 border border-yellow-500/50 rounded-lg shadow-xl w-80">
+          <div className="flex items-start gap-2 mb-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm text-white font-medium">NCM Recomendado pela IA</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Este NCM foi sugerido pela IA com base na descricao do produto.
-                Nao foi encontrado NCM explicito no documento original.
+              <p className="text-sm text-yellow-400 font-bold">ATENÇÃO: NCM Sugerido pela IA</p>
+              <p className="text-xs text-slate-300 mt-1">
+                Este NCM foi <strong>recomendado automaticamente</strong> pela inteligência artificial
+                com base na descrição do produto.
+              </p>
+              <p className="text-xs text-red-400 mt-2 font-medium">
+                Recomendamos verificar se o NCM está correto antes de prosseguir!
               </p>
             </div>
           </div>
