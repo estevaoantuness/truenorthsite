@@ -722,9 +722,19 @@ const DashboardMockup = () => {
 // --- COMPONENTES DA FICHA DE PRODUTO ---
 
 const FichaProdutoSimulada = ({ operation, items, inadimplencia }: { operation: any, items: any[], inadimplencia: number }) => {
+  // Validações de segurança
+  if (!operation || !items || items.length === 0) {
+    return (
+      <div className="text-center py-8 text-slate-400">
+        <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">Dados insuficientes para exibir ficha de produto</p>
+      </div>
+    );
+  }
+
   const itemPrincipal = items[0];
   const riscoNcmPrincipal = itemPrincipal ? calcularRiscoNCM(itemPrincipal.ncm, inadimplencia) : 0;
-  
+
   // Helpers para estilo de campo desabilitado
   const Field = ({ label, value, highlightRisk, riskLabel, grow }: { label: string, value: string | number, highlightRisk?: boolean, riskLabel?: string, grow?: boolean }) => (
     <div className={`${grow ? 'md:col-span-2' : ''} flex flex-col`}>
@@ -737,7 +747,7 @@ const FichaProdutoSimulada = ({ operation, items, inadimplencia }: { operation: 
   );
 
   const codigoProduto = itemPrincipal?.desc ? `PRD-${String(Math.floor(Math.random()*9000)+1000)}` : 'PRD-0000';
-  const descricaoComplementar = `Operação de importação de ${operation.sector.toLowerCase()} procedente de ${operation.country}, modalidade ${operation.modality.toLowerCase()}. Contém ${items.length} item(ns) com NCM principal ${itemPrincipal?.ncm || 'não informada'}.`;
+  const descricaoComplementar = `Operação de importação de ${(operation.sector || 'diversos').toLowerCase()} procedente de ${operation.country || 'origem não informada'}, modalidade ${(operation.modality || 'não especificada').toLowerCase()}. Contém ${items.length} item(ns) com NCM principal ${itemPrincipal?.ncm || 'não informada'}.`;
 
   return (
     <div className="mt-12 animate-fade-in-up">
@@ -2570,17 +2580,50 @@ const ReportModal = ({
     doc.save(`truenorth-relatorio-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  // Validação de segurança - garantir que results tem estrutura correta
+  if (!results || !results.risks) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.95, y: 10 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.95, y: 10 }}
+          className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="p-8 text-center">
+            <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Erro ao carregar relatório</h3>
+            <p className="text-slate-400 mb-6">Estrutura de dados inválida. Por favor, execute a simulação novamente.</p>
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-lg transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      exit={{ opacity: 0 }} 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
-      <motion.div 
-        initial={{ scale: 0.95, y: 10 }} 
-        animate={{ scale: 1, y: 0 }} 
+      <motion.div
+        initial={{ scale: 0.95, y: 10 }}
+        animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 10 }}
         className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
@@ -2611,11 +2654,11 @@ const ReportModal = ({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
               <div className="text-xs text-slate-500 uppercase mb-1">Economia estimada</div>
-              <div className="text-lg font-bold text-green-400">{results.details?.total || 'N/D'}</div>
+              <div className="text-lg font-bold text-green-400">{results?.details?.total || 'N/D'}</div>
             </div>
             <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
               <div className="text-xs text-slate-500 uppercase mb-1">Riscos mapeados</div>
-              <div className="text-lg font-bold text-orange-400">{results.risks.length}</div>
+              <div className="text-lg font-bold text-orange-400">{results?.risks?.length || 0}</div>
             </div>
             <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
               <div className="text-xs text-slate-500 uppercase mb-1">Tempo economizado</div>
