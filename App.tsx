@@ -1023,6 +1023,265 @@ const ForWhomSection = () => {
   )
 }
 
+// --- SUB-COMPONENTES DO MODAL DE PERFIL ---
+
+function StatsTab({ stats }: { stats: api.OperationsStats | null }) {
+  if (!stats) {
+    return <div className="text-slate-400">Carregando estatísticas...</div>;
+  }
+
+  const successRate = stats.totalOperations > 0
+    ? Math.round((stats.operationsValidated / stats.totalOperations) * 100)
+    : 0;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+        <div className="text-slate-400 text-sm mb-1">Total de Operações</div>
+        <div className="text-2xl font-bold text-white">{stats.totalOperations}</div>
+      </div>
+      <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+        <div className="text-slate-400 text-sm mb-1">Custos Evitados</div>
+        <div className="text-2xl font-bold text-green-400">
+          R$ {stats.totalCostsAvoided.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </div>
+      </div>
+      <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+        <div className="text-slate-400 text-sm mb-1">Tempo Economizado</div>
+        <div className="text-2xl font-bold text-blue-400">
+          {stats.totalTimeSavedMin} minutos
+        </div>
+      </div>
+      <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+        <div className="text-slate-400 text-sm mb-1">Taxa de Sucesso</div>
+        <div className="text-2xl font-bold text-primary-400">{successRate}%</div>
+      </div>
+    </div>
+  );
+}
+
+function HistoryTab({ operations, onLoadMore }: {
+  operations: api.Operation[];
+  onLoadMore: () => void;
+}) {
+  if (operations.length === 0) {
+    return (
+      <div className="text-center text-slate-400 py-8">
+        Nenhuma operação encontrada
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {operations.map((op) => (
+        <div
+          key={op.id}
+          className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors"
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 text-slate-400 mt-1" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-medium">{op.arquivoNome}</span>
+                  {op.status === 'VALIDADO' ? (
+                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">
+                      ✓ VALIDADO
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded">
+                      ⚠ COM_ERROS
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-slate-400 mt-1">
+                  {new Date(op.createdAt).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                  {' | '}
+                  {op.arquivoTipo.toUpperCase()}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              {op.custoTotalErros && op.custoTotalErros > 0 ? (
+                <div className="text-red-400 font-semibold">
+                  R$ {op.custoTotalErros.toFixed(2)}
+                </div>
+              ) : (
+                <div className="text-green-400 font-semibold">OK</div>
+              )}
+              {op.tempoEconomizadoMin && (
+                <div className="text-xs text-slate-400 mt-1">
+                  {op.tempoEconomizadoMin} min economizados
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={onLoadMore}
+        className="w-full py-2 bg-slate-800 text-white hover:bg-slate-700 rounded-lg transition-colors"
+      >
+        Ver Mais
+      </button>
+    </div>
+  );
+}
+
+function SettingsTab() {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm text-slate-400 mb-2">Idioma Preferido</label>
+        <select className="w-full bg-slate-800 border border-slate-700 text-white px-3 py-2 rounded-lg">
+          <option>Português</option>
+          <option>English</option>
+          <option>Español</option>
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm text-slate-400 mb-2">Moeda</label>
+        <select className="w-full bg-slate-800 border border-slate-700 text-white px-3 py-2 rounded-lg">
+          <option>BRL (R$)</option>
+          <option>USD ($)</option>
+          <option>EUR (€)</option>
+        </select>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-slate-300">Notificações por Email</span>
+        <input type="checkbox" defaultChecked className="w-5 h-5" />
+      </div>
+    </div>
+  );
+}
+
+// --- MODAL DE PERFIL DO USUÁRIO ---
+
+interface UserProfileModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser: api.User | null;
+  operations: api.Operation[];
+  stats: api.OperationsStats | null;
+  onLoadMore: () => void;
+  onLogout: () => void;
+}
+
+function UserProfileModal({
+  isOpen,
+  onClose,
+  currentUser,
+  operations,
+  stats,
+  onLoadMore,
+  onLogout,
+}: UserProfileModalProps) {
+  const [activeTab, setActiveTab] = useState<'stats' | 'history' | 'settings'>('stats');
+
+  if (!isOpen || !currentUser) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-700 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="p-6 border-b border-slate-700">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-primary-500/20 rounded-full flex items-center justify-center">
+                <User className="w-8 h-8 text-primary-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">
+                  {currentUser.name || 'Usuário'}
+                </h2>
+                <p className="text-slate-400 text-sm">{currentUser.email}</p>
+                <span className="inline-block mt-1 px-2 py-0.5 bg-primary-500/20 text-primary-400 text-xs rounded">
+                  Plano Pro
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mt-6">
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'stats'
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              📊 Estatísticas
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'history'
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              📄 Histórico
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'settings'
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              ⚙️ Configurações
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          {activeTab === 'stats' && (
+            <StatsTab stats={stats} />
+          )}
+          {activeTab === 'history' && (
+            <HistoryTab operations={operations} onLoadMore={onLoadMore} />
+          )}
+          {activeTab === 'settings' && (
+            <SettingsTab />
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-700 flex justify-end gap-3">
+          <button
+            onClick={onLogout}
+            className="px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
+          >
+            Sair
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-slate-800 text-white hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ProfileSection = () => {
   const [prefs, setPrefs] = useState({
     language: 'pt-BR',
@@ -1250,7 +1509,7 @@ const Footer = () => {
 // --- PÁGINAS PRINCIPAIS ---
 
 // 1. LANDING PAGE WRAPPER
-const Navbar = ({ onSimulateClick, onOpenAuth, currentUser }: { onSimulateClick: () => void; onOpenAuth: () => void; currentUser: api.User | null }) => {
+const Navbar = ({ onSimulateClick, onOpenAuth, onOpenProfile, currentUser }: { onSimulateClick: () => void; onOpenAuth: () => void; onOpenProfile: () => void; currentUser: api.User | null }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -1288,10 +1547,14 @@ const Navbar = ({ onSimulateClick, onOpenAuth, currentUser }: { onSimulateClick:
           </div>
           <div className="hidden md:block">
             {currentUser ? (
-              <div className="flex items-center gap-3 bg-slate-800/50 border border-slate-700 px-3 py-2 rounded-lg">
+              <button
+                onClick={onOpenProfile}
+                className="flex items-center gap-3 bg-slate-800/50 border border-slate-700 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-colors cursor-pointer"
+                title="Abrir perfil"
+              >
                 <User className="w-4 h-4 text-primary-400" />
                 <span className="text-sm text-slate-200">{currentUser.name || currentUser.email}</span>
-              </div>
+              </button>
             ) : (
               <button
                 onClick={onOpenAuth}
@@ -1323,12 +1586,18 @@ const Navbar = ({ onSimulateClick, onOpenAuth, currentUser }: { onSimulateClick:
               <button onClick={() => { setIsOpen(false); onSimulateClick(); }} className="text-accent-400 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Simulação</button>
               <button onClick={() => scrollToSection('contato')} className="text-slate-300 block w-full text-left px-3 py-2 rounded-md text-base font-medium">Contato</button>
               {currentUser ? (
-                <div className="w-full text-left bg-slate-800/60 text-white px-3 py-2 rounded-md text-base font-medium mt-4 border border-slate-700">
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenProfile();
+                  }}
+                  className="w-full text-left bg-slate-800/60 text-white px-3 py-2 rounded-md text-base font-medium mt-4 border border-slate-700 hover:bg-slate-700/60 transition-colors"
+                >
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-primary-400" />
                     <span className="text-sm">{currentUser.name || currentUser.email}</span>
                   </div>
-                </div>
+                </button>
               ) : (
                 <button
                   onClick={() => { setIsOpen(false); onOpenAuth(); }}
@@ -1572,10 +1841,10 @@ const AuthModal = ({ isOpen, onClose, mode, setMode, onLogin, onRegister, loadin
   );
 };
 
-const LandingPage = ({ onNavigateToSimulation, onOpenAuth, currentUser }: { onNavigateToSimulation: () => void; onOpenAuth: () => void; currentUser: api.User | null }) => {
+const LandingPage = ({ onNavigateToSimulation, onOpenAuth, onOpenProfile, currentUser }: { onNavigateToSimulation: () => void; onOpenAuth: () => void; onOpenProfile: () => void; currentUser: api.User | null }) => {
   return (
     <>
-      <Navbar onSimulateClick={onNavigateToSimulation} onOpenAuth={onOpenAuth} currentUser={currentUser} />
+      <Navbar onSimulateClick={onNavigateToSimulation} onOpenAuth={onOpenAuth} onOpenProfile={onOpenProfile} currentUser={currentUser} />
       <Hero onSimulateClick={onNavigateToSimulation} />
       <HighLevelFlow />
       <HowItWorks />
@@ -2118,6 +2387,13 @@ const PlatformSimulationPage = ({
       setLoadingHistory(false);
     }
   };
+
+  // Carregar histórico automaticamente ao abrir o perfil
+  useEffect(() => {
+    if (showProfile && currentUser) {
+      loadOperationsHistory();
+    }
+  }, [showProfile, currentUser]);
 
   // Carrega histórico ao montar o componente
   useEffect(() => {
@@ -4335,7 +4611,7 @@ export default function App() {
       )}
 
       {currentScreen === 'landing' ? (
-        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={() => openAuth('login')} currentUser={currentUser} />
+        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={() => openAuth('login')} onOpenProfile={() => setShowProfile(true)} currentUser={currentUser} />
       ) : (
         <PlatformSimulationPage
           onNavigateHome={navigateHome}
@@ -4344,6 +4620,17 @@ export default function App() {
           onOpenAuth={openAuth}
         />
       )}
+
+      {/* Modal de Perfil do Usuário */}
+      <UserProfileModal
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+        currentUser={currentUser}
+        operations={operationsHistory}
+        stats={operationsStats}
+        onLoadMore={loadOperationsHistory}
+        onLogout={handleLogout}
+      />
     </>
   );
 }
