@@ -2720,7 +2720,7 @@ const ReportModal = ({
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800 space-y-3">
               <div className="text-sm font-semibold text-white flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-accent-500" /> Compliance & Anuentes
@@ -2734,20 +2734,39 @@ const ReportModal = ({
               <div className="text-sm font-semibold text-white flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-orange-400" /> Alertas e Recomendações
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {(alertas.length > 0 ? alertas : ['Nenhum alerta registrado']).map((alerta, idx) => (
-                  <div key={`alerta-${idx}`} className="text-sm text-slate-200 flex gap-2">
-                    <AlertTriangle className="w-4 h-4 text-orange-400 mt-0.5" /> {alerta}
-                  </div>
+                  <span key={`alerta-${idx}`} className="inline-flex items-center gap-1 bg-orange-500/10 text-orange-200 text-xs px-2 py-1 rounded-full border border-orange-500/30">
+                    <AlertTriangle className="w-3 h-3" /> {alerta}
+                  </span>
                 ))}
                 {recomendacoes.map((rec, idx) => (
-                  <div key={`rec-${idx}`} className="text-sm text-slate-300 flex gap-2">
-                    <Sparkles className="w-4 h-4 text-accent-500 mt-0.5" /> {rec}
-                  </div>
+                  <span key={`rec-${idx}`} className="inline-flex items-center gap-1 bg-accent-500/10 text-accent-200 text-xs px-2 py-1 rounded-full border border-accent-500/30">
+                    <Sparkles className="w-3 h-3" /> {rec}
+                  </span>
                 ))}
               </div>
             </div>
           </div>
+
+          {results && (
+            <div className="sticky bottom-4 z-10">
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row gap-3 shadow-lg shadow-slate-900/40">
+                <button
+                  onClick={handleSimulationClick}
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Calculator className="w-4 h-4" /> Revalidar simulação
+                </button>
+                <button
+                  onClick={generateDocument}
+                  className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <FileCheck className="w-4 h-4" /> Exportar XML/PDF
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
@@ -2761,30 +2780,63 @@ const ReportModal = ({
                 const isRecommended = item.ncmFonte === 'recomendado' && !item.ncmEditado;
                 const isEdited = !!item.ncmEditado;
                 const isFromDocument = item.ncmFonte === 'documento';
+                const isOpen = expandedItem === item.id;
 
                 return (
-                  <div key={item.id || idx} className="bg-slate-900 border border-slate-800 rounded-lg p-3">
-                    <div className="flex justify-between items-start text-sm text-white">
-                      <span className="font-semibold">Item {idx + 1}</span>
-                      <NcmBadge
-                        item={item}
-                        idx={idx}
-                        operationId={currentOperationId}
-                        onNcmUpdate={(newNcm) => {
-                          const updatedItems = [...items];
-                          updatedItems[idx] = { ...updatedItems[idx], ncm: newNcm, ncmEditado: newNcm };
-                          setItems(updatedItems);
-                        }}
-                      />
-                    </div>
-                    <div className="text-sm text-slate-200 mt-1">{item.desc || 'Sem descrição'}</div>
-                    <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-3">
-                      <span>Valor: {item.value || '0'}</span>
-                      <span>Peso: {item.weight || '0'} kg</span>
-                      {item.ncmConfianca && <span>Confianca: {item.ncmConfianca}</span>}
-                      {isFromDocument && <span className="text-green-400">NCM do documento</span>}
-                      {isEdited && <span className="text-blue-400">NCM editado</span>}
-                    </div>
+                  <div key={item.id || idx} className="bg-slate-900 border border-slate-800 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedItem(isOpen ? null : item.id)}
+                      className="w-full text-left px-3 py-3 flex items-start justify-between gap-3"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-white flex items-center gap-2">
+                          Item {idx + 1}
+                          {isFromDocument && <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">NCM do doc</span>}
+                          {isEdited && <span className="text-[10px] text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full">Editado</span>}
+                          {isRecommended && <span className="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full">Recomendado</span>}
+                        </div>
+                        <div className="text-sm text-slate-300 mt-1 line-clamp-1">{item.desc || 'Sem descrição'}</div>
+                        <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap gap-3">
+                          <span>Valor: {item.value || '0'}</span>
+                          <span>Peso: {item.weight || '0'} kg</span>
+                          {item.ncmConfianca && <span>Confiança: {item.ncmConfianca}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <NcmBadge
+                          item={item}
+                          idx={idx}
+                          operationId={currentOperationId}
+                          onNcmUpdate={(newNcm) => {
+                            const updatedItems = [...items];
+                            updatedItems[idx] = { ...updatedItems[idx], ncm: newNcm, ncmEditado: newNcm };
+                            setItems(updatedItems);
+                          }}
+                        />
+                        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+
+                    {isOpen && (
+                      <div className="border-t border-slate-800 px-3 pb-3 text-sm text-slate-200 space-y-2">
+                        <div className="flex flex-wrap gap-3 text-[12px] text-slate-400">
+                          <span>Qtd/Unidade: {item.quantity || 'N/D'}</span>
+                          <span>Unit: {item.unitPrice || item.unit_price || 'N/D'}</span>
+                          <span>Origem: {item.origin || item.origem || 'N/D'}</span>
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          NCM fonte: {item.ncmFonte || 'N/D'} {item.ncmDocumento ? `• Doc: ${item.ncmDocumento}` : ''}
+                        </div>
+                        {item.anuentes && item.anuentes.length > 0 && (
+                          <div className="text-xs text-slate-300 flex flex-wrap gap-2">
+                            {item.anuentes.map((a: string) => (
+                              <span key={a} className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-200 text-[11px] border border-slate-700">{a}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -2853,6 +2905,7 @@ const PlatformSimulationPage = ({
   const [items, setItems] = useState([
     { id: 1, desc: '', ncm: '', weight: '', value: '', unitPrice: '', quantity: '', origin: '' }
   ]);
+  const [expandedItem, setExpandedItem] = useState<number | null>(null);
 
   // Estado de compliance usando novo sistema de multi-select
   const [selectedAnuentes, setSelectedAnuentes] = useState<string[]>([]);
@@ -2900,6 +2953,12 @@ const PlatformSimulationPage = ({
   const [errorsExpanded, setErrorsExpanded] = useState(false);
   const [showCalculationExplainer, setShowCalculationExplainer] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+  useEffect(() => {
+    // Evita overlay escuro sem conteúdo caso os resultados não existam
+    if (showReport && (!results || !results.risks)) {
+      setShowReport(false);
+    }
+  }, [showReport, results]);
 
   // Novas features - Impostos, Descrição DI, Subfaturamento
   const [impostosEstimados, setImpostosEstimados] = useState<{
@@ -4077,6 +4136,41 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                 </div>
               </div>
             </div>
+
+            {/* Painel-resumo compacto */}
+            {(results || incotermInfo || apiValidation) && (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                    <div className="text-[10px] uppercase text-slate-500 mb-1">Risco geral</div>
+                    <div className="text-lg font-bold text-white flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-accent-400" />
+                      {apiValidation?.risco_geral || 'N/D'}
+                    </div>
+                    <div className="text-[11px] text-slate-500">Erros: {apiValidation?.erros?.length || 0}</div>
+                  </div>
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                    <div className="text-[10px] uppercase text-slate-500 mb-1">Incoterm</div>
+                    <div className="text-lg font-bold text-white">{incotermInfo?.code || duimpFields.incoterm || 'N/D'}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{incotermInfo?.location || 'Local não informado'}</div>
+                  </div>
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                    <div className="text-[10px] uppercase text-slate-500 mb-1">NCMs</div>
+                    <div className="text-lg font-bold text-white flex gap-2">
+                      <span className="text-green-400">{extractionSummary?.ncmConfidence.alta || 0}↑</span>
+                      <span className="text-yellow-400">{extractionSummary?.ncmConfidence.media || 0}≈</span>
+                      <span className="text-red-400">{extractionSummary?.ncmConfidence.baixa || 0}↓</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">Itens: {items.length}</div>
+                  </div>
+                  <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                    <div className="text-[10px] uppercase text-slate-500 mb-1">Tempo</div>
+                    <div className="text-lg font-bold text-accent-400">{timeStats.saved} min</div>
+                    <div className="text-[11px] text-slate-500">Economizados</div>
+                  </div>
+                </div>
+              </div>
+            )}
 
           {/* === FEEDBACK DA IA === */}
           {aiFeedback && (
