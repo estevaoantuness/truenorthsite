@@ -2858,6 +2858,7 @@ const PlatformSimulationPage = ({
   const [selectedAnuentes, setSelectedAnuentes] = useState<string[]>([]);
   const [lpcoRequested, setLpcoRequested] = useState(false);
   const [anuentsDropdownOpen, setAnuentsDropdownOpen] = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false); // Indica se anuentes foram preenchidos automaticamente
 
   const [calculating, setCalculating] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -2985,6 +2986,17 @@ const PlatformSimulationPage = ({
       setProcessingProgress(80);
       const validation = await api.validateOperation(operationId);
       setApiValidation(validation);
+
+      // Auto-fill compliance após validação (merge com seleção existente)
+      if (validation?.anuentes_necessarios && validation.anuentes_necessarios.length > 0) {
+        setSelectedAnuentes(prev => {
+          const merged = new Set([...prev, ...validation.anuentes_necessarios]);
+          console.log('[Auto-fill] Anuentes após validação:', Array.from(merged));
+          return Array.from(merged);
+        });
+        setAutoFilled(true);
+      }
+
       setProcessingProgress(100);
 
       // Convert API data to form format
@@ -3040,6 +3052,24 @@ const PlatformSimulationPage = ({
         supplier: extractedData?.supplier || { name: 'N/A', country: 'N/A' }
       });
       setIncotermInfo(extractedData?.incoterm_info);
+
+      // Auto-fill compliance com anuentes detectados
+      if (extractedData?.anuentes_operacao && extractedData.anuentes_operacao.length > 0) {
+        setSelectedAnuentes(extractedData.anuentes_operacao);
+        setAutoFilled(true);
+        console.log('[Auto-fill] Anuentes da operação:', extractedData.anuentes_operacao);
+      } else {
+        // Fallback: agregar de todos os itens
+        const anuentesAgregados = new Set<string>();
+        apiItems.forEach((item: any) => {
+          (item.anuentes || []).forEach((a: string) => anuentesAgregados.add(a));
+        });
+        if (anuentesAgregados.size > 0) {
+          setSelectedAnuentes(Array.from(anuentesAgregados));
+          setAutoFilled(true);
+          console.log('[Auto-fill] Anuentes agregados dos itens:', Array.from(anuentesAgregados));
+        }
+      }
 
       // Calculate time saved
       // Validar que started foi setado (se for 0, é o valor inicial inválido)
@@ -3329,15 +3359,24 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
       setOperationData(invoice.operation);
       setItems(invoice.items);
       // Usar campo anuentes se disponível, senão converter do compliance antigo
-      if (invoice.anuentes) {
+      if (invoice.anuentes && invoice.anuentes.length > 0) {
         setSelectedAnuentes(invoice.anuentes);
-      } else {
+        setAutoFilled(true);
+        console.log('[Auto-fill] Anuentes do histórico:', invoice.anuentes);
+      } else if (invoice.compliance) {
         const anuentes: string[] = [];
         if (invoice.compliance.anvisa) anuentes.push('ANVISA');
         if (invoice.compliance.mapa) anuentes.push('MAPA');
-        setSelectedAnuentes(anuentes);
+        if (invoice.compliance.anatel) anuentes.push('ANATEL');
+        if (invoice.compliance.inmetro) anuentes.push('INMETRO');
+        if (invoice.compliance.ibama) anuentes.push('IBAMA');
+        if (anuentes.length > 0) {
+          setSelectedAnuentes(anuentes);
+          setAutoFilled(true);
+          console.log('[Auto-fill] Anuentes convertidos do formato antigo:', anuentes);
+        }
       }
-      setLpcoRequested(invoice.compliance.lpcoRequested);
+      setLpcoRequested(invoice.compliance?.lpcoRequested || false);
       setWorkflowStep('form');
       setTimeStats(prev => ({ ...prev, ended: Date.now(), saved: 25 - invoice.processingTime }));
     }, 2500);
@@ -4763,11 +4802,19 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                           onClick={() => setAnuentsDropdownOpen(!anuentsDropdownOpen)}
                           className="w-full bg-slate-950 border border-slate-700 text-left px-3 py-2.5 rounded-lg text-sm text-slate-300 flex items-center justify-between hover:border-slate-600 transition-colors"
                         >
-                          <span className={selectedAnuentes.length === 0 ? 'text-slate-500' : 'text-slate-300'}>
-                            {selectedAnuentes.length === 0
-                              ? 'Selecione os anuentes...'
-                              : `${selectedAnuentes.length} órgão(s) selecionado(s)`}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={selectedAnuentes.length === 0 ? 'text-slate-500' : 'text-slate-300'}>
+                              {selectedAnuentes.length === 0
+                                ? 'Selecione os anuentes...'
+                                : `${selectedAnuentes.length} órgão(s) selecionado(s)`}
+                            </span>
+                            {autoFilled && selectedAnuentes.length > 0 && (
+                              <div className="flex items-center gap-1 px-2 py-0.5 bg-accent-500/20 rounded-full">
+                                <Sparkles className="w-3 h-3 text-accent-400" />
+                                <span className="text-xs text-accent-400">Auto</span>
+                              </div>
+                            )}
+                          </div>
                           <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${anuentsDropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
 
@@ -4776,7 +4823,10 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                             <div className="p-2 border-b border-slate-700">
                               <button
                                 type="button"
-                                onClick={() => setSelectedAnuentes([])}
+                                onClick={() => {
+                                  setSelectedAnuentes([]);
+                                  setAutoFilled(false);
+                                }}
                                 className="text-xs text-slate-400 hover:text-slate-300"
                               >
                                 Limpar seleção
@@ -4797,6 +4847,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                                       } else {
                                         setSelectedAnuentes(selectedAnuentes.filter(a => a !== anuente));
                                       }
+                                      setAutoFilled(false); // Marca como modificado manualmente
                                     }}
                                     className="rounded bg-slate-900 border-slate-600 text-primary-600 focus:ring-primary-600 focus:ring-offset-slate-900"
                                   />
