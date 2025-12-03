@@ -4511,6 +4511,12 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authTransition, setAuthTransition] = useState(false);
   const [currentUser, setCurrentUser] = useState<api.User | null>(() => api.getStoredUser());
+  const [showProfile, setShowProfile] = useState(false);
+
+  // Estados para o modal de perfil
+  const [operationsHistory, setOperationsHistory] = useState<api.Operation[]>([]);
+  const [operationsStats, setOperationsStats] = useState<api.OperationsStats | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Função para navegar para a simulação (rola para o topo)
   const navigateToSimulation = () => {
@@ -4529,6 +4535,24 @@ export default function App() {
     setAuthError(null);
     setShowAuthModal(true);
     setCurrentScreen((screen) => screen); // não muda de tela
+  };
+
+  // Função para carregar histórico de operações
+  const loadOperationsHistory = async () => {
+    if (!currentUser) return;
+    setLoadingHistory(true);
+    try {
+      const [historyRes, statsRes] = await Promise.all([
+        api.listOperations(5, 0),
+        api.getOperationsStats()
+      ]);
+      setOperationsHistory(historyRes.operations);
+      setOperationsStats(statsRes);
+    } catch (error) {
+      console.warn('Erro ao carregar histórico:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const handleLogin = async (email: string, password: string) => {
@@ -4586,6 +4610,13 @@ export default function App() {
         });
     }
   }, [currentUser]);
+
+  // Carregar histórico quando abrir o perfil
+  useEffect(() => {
+    if (showProfile && currentUser) {
+      loadOperationsHistory();
+    }
+  }, [showProfile, currentUser]);
 
   return (
     <>
