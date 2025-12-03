@@ -3042,7 +3042,9 @@ const PlatformSimulationPage = ({
       setIncotermInfo(extractedData?.incoterm_info);
 
       // Calculate time saved
-      const processingTimeMs = Date.now() - timeStats.started;
+      // Validar que started foi setado (se for 0, é o valor inicial inválido)
+      const validStartTime = timeStats.started > 0 ? timeStats.started : Date.now();
+      const processingTimeMs = Date.now() - validStartTime;
       const processingTime = Math.round(processingTimeMs / 1000 / 60);
       setTimeStats(prev => ({ ...prev, ended: Date.now(), saved: Math.max(17, 25 - processingTime) }));
 
@@ -4020,7 +4022,7 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
             <div className="bg-gradient-to-r from-primary-900/30 to-accent-900/30 border border-primary-800/30 rounded-xl p-4 mb-8">
               <div className="flex flex-wrap items-center justify-center gap-6 text-center">
                 <div>
-                  <div className="text-xl font-bold text-white">{selectedInvoice ? SAMPLE_INVOICES[selectedInvoice as keyof typeof SAMPLE_INVOICES].processingTime : Math.round((extractionSummary?.processingTimeMs || 8000) / 1000)} s</div>
+                  <div className="text-xl font-bold text-white">{selectedInvoice ? SAMPLE_INVOICES[selectedInvoice as keyof typeof SAMPLE_INVOICES].processingTime : Math.max(1, Math.min(999, Math.round((extractionSummary?.processingTimeMs || 8000) / 1000)))} s</div>
                   <div className="text-xs text-slate-400">Com copiloto</div>
                 </div>
                 <div className="text-slate-600 text-sm">vs</div>
