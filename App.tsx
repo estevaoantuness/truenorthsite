@@ -5025,8 +5025,15 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                     <ShieldCheck className="w-5 h-5 text-green-400" /> Resultado da Simulação
                   </h4>
                   <button
-                    onClick={() => setShowReport(true)}
-                    className="text-xs text-primary-400 hover:text-primary-300 underline underline-offset-2"
+                    onClick={() => {
+                      if (results && results.risks) setShowReport(true);
+                    }}
+                    disabled={!results || !results.risks}
+                    className={`text-xs underline underline-offset-2 ${
+                      results && results.risks
+                        ? 'text-primary-400 hover:text-primary-300'
+                        : 'text-slate-600 cursor-not-allowed'
+                    }`}
                   >
                     Ver detalhes completos
                   </button>
