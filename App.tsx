@@ -2473,6 +2473,7 @@ const PlatformSimulationPage = ({
   // --- ESTADOS PARA NOVO LAYOUT ---
   const [showFichaModal, setShowFichaModal] = useState(false);
   const [errorsExpanded, setErrorsExpanded] = useState(false);
+  const [showCalculationExplainer, setShowCalculationExplainer] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 
   // Novas features - Impostos, Descrição DI, Subfaturamento
@@ -3807,6 +3808,60 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                     className="overflow-hidden"
                   >
                     <div className="mt-3 space-y-3">
+                      {/* Seção Educativa: Como Calculamos */}
+                      <div>
+                        <button
+                          onClick={() => setShowCalculationExplainer(!showCalculationExplainer)}
+                          className="w-full flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg hover:border-slate-700 transition-colors"
+                        >
+                          <span className="text-sm text-slate-400">
+                            💡 Como calculamos a economia de custos?
+                          </span>
+                          {showCalculationExplainer ? (
+                            <ChevronUp className="w-4 h-4 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                          )}
+                        </button>
+
+                        {showCalculationExplainer && (
+                          <div className="mt-2 p-4 bg-slate-900 border border-slate-800 rounded-lg text-sm text-slate-400 space-y-3">
+                            <p>
+                              Nosso sistema calcula a <strong className="text-white">economia real</strong> que você obtém ao identificar e corrigir erros <em>antes</em> de enviar a documentação para a alfândega.
+                            </p>
+
+                            <div className="space-y-2">
+                              <h5 className="text-white font-semibold">Para cada erro encontrado:</h5>
+                              <ol className="list-decimal list-inside space-y-1 text-xs">
+                                <li>Custo base do erro (ex: NCM errado = R$ 500)</li>
+                                <li>+ Percentual sobre valor da mercadoria (ex: 2%)</li>
+                                <li>× Multiplicador por setor (químico = 1.5x, alimentos = 1.2x)</li>
+                                <li>+ Demurrage (dias de atraso × R$ 1.500/dia)</li>
+                              </ol>
+                            </div>
+
+                            <div className="border-t border-slate-800 pt-3">
+                              <h5 className="text-white font-semibold mb-2">Exemplo Real:</h5>
+                              <div className="bg-slate-950 p-3 rounded text-xs space-y-1">
+                                <div>Erro: NCM incorreto em mercadoria de R$ 10.000</div>
+                                <div>• Base: R$ 500</div>
+                                <div>• + 2% do valor: R$ 200</div>
+                                <div>• Subtotal: R$ 700</div>
+                                <div>• × Setor químico (1.5x): R$ 1.050</div>
+                                <div>• + Demurrage (5 dias × R$ 1.500): R$ 7.500</div>
+                                <div className="text-red-400 font-bold pt-1 border-t border-slate-800">
+                                  = Total: R$ 8.550 evitados
+                                </div>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-slate-500">
+                              Todos os valores são baseados em tabelas oficiais da Receita Federal e práticas de mercado documentadas.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Lista de Erros */}
                       {apiValidation.erros && apiValidation.erros.length > 0 && (
                         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -3836,16 +3891,36 @@ ANUENTES NECESSÁRIOS: ${selectedAnuentes.join(', ')}`;
                       {/* Impacto Financeiro Resumido */}
                       {apiValidation.custos && (
                         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-slate-300">Impacto Financeiro</h4>
+                            <CostBreakdownTooltip custo={apiValidation.custos} />
+                          </div>
+
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-slate-400">Custo Total Potencial</span>
                             <span className="text-lg font-bold text-red-400">
                               R$ {(apiValidation.custos.custoTotal || 0).toLocaleString('pt-BR')}
                             </span>
                           </div>
-                          <div className="flex justify-between items-center mt-2 text-xs text-slate-500">
-                            <span>Multas: R$ {(apiValidation.custos.custoMultas || 0).toLocaleString('pt-BR')}</span>
-                            <span>Demurrage: R$ {(apiValidation.custos.custoDemurrage || 0).toLocaleString('pt-BR')}</span>
-                            <span>{apiValidation.custos.diasAtrasoEstimado || 0} dias atraso</span>
+
+                          <div className="mt-3 space-y-2 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-500">Multas e Penalidades</span>
+                              <span className="text-red-400">
+                                R$ {(apiValidation.custos.custoMultas || 0).toLocaleString('pt-BR')}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-500">Demurrage (Sobrestadia)</span>
+                              <span className="text-orange-400">
+                                R$ {(apiValidation.custos.custoDemurrage || 0).toLocaleString('pt-BR')}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-slate-600">
+                                {apiValidation.custos.diasAtrasoEstimado || 0} dias × R$ 1.500/dia
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
