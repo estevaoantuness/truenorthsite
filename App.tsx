@@ -133,6 +133,12 @@ function NcmBadge({ item, idx, operationId, onNcmUpdate }: NcmBadgeProps) {
   const isFromDocument = item.ncmFonte === 'documento';
   const ncmDisplay = item.ncm || 'N/A';
 
+  // Confidence alert from backend
+  const confidenceAlert = item.confidence_alert;
+  const hasAlert = !!confidenceAlert;
+  const isErrorAlert = confidenceAlert?.level === 'error';
+  const isLowConfidence = item.ncmConfianca === 'BAIXA' || isErrorAlert;
+
   const handleSave = async () => {
     if (editValue.length !== 8) {
       setError('NCM deve ter 8 digitos');
@@ -158,8 +164,12 @@ function NcmBadge({ item, idx, operationId, onNcmUpdate }: NcmBadgeProps) {
     }
   };
 
-  // Badge color based on source
-  const badgeClass = isEdited
+  // Badge color based on source and confidence
+  const badgeClass = isErrorAlert
+    ? 'bg-red-600/20 text-red-400 border border-red-500/50 animate-pulse'
+    : isLowConfidence
+    ? 'bg-orange-600/20 text-orange-400 border border-orange-500/50'
+    : isEdited
     ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
     : isFromDocument
     ? 'bg-green-600/20 text-green-400 border border-green-500/30'
@@ -170,12 +180,22 @@ function NcmBadge({ item, idx, operationId, onNcmUpdate }: NcmBadgeProps) {
       {/* Badge NCM com label de fonte */}
       <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono ${badgeClass}`}>
         {/* Label de fonte */}
-        {isRecommended && (
+        {isErrorAlert && (
+          <span className="px-1 py-0.5 bg-red-500/40 text-red-200 rounded text-[10px] font-bold animate-pulse">
+            ⚠️ ERRO
+          </span>
+        )}
+        {isLowConfidence && !isErrorAlert && (
+          <span className="px-1 py-0.5 bg-orange-500/40 text-orange-200 rounded text-[10px] font-bold">
+            ⚠️ REVISAR
+          </span>
+        )}
+        {isRecommended && !isLowConfidence && !isErrorAlert && (
           <span className="px-1 py-0.5 bg-yellow-500/30 text-yellow-300 rounded text-[10px] font-bold">
             IA
           </span>
         )}
-        {isFromDocument && !isEdited && (
+        {isFromDocument && !isEdited && !isLowConfidence && (
           <span className="px-1 py-0.5 bg-green-500/30 text-green-300 rounded text-[10px] font-bold">
             DOC
           </span>
@@ -188,31 +208,53 @@ function NcmBadge({ item, idx, operationId, onNcmUpdate }: NcmBadgeProps) {
         <span>{ncmDisplay}</span>
       </div>
 
-      {/* Info icon for recommended NCM - Clicável para ver detalhes */}
-      {isRecommended && (
+      {/* Info icon for alerts and recommended NCM - Clicável para ver detalhes */}
+      {(isRecommended || hasAlert) && (
         <button
           onClick={() => setShowTooltip(!showTooltip)}
-          className="p-0.5 hover:bg-slate-700 rounded-full transition-colors animate-pulse"
-          title="NCM recomendado pela IA - Clique para revisar"
+          className={`p-0.5 hover:bg-slate-700 rounded-full transition-colors ${hasAlert ? 'animate-pulse' : ''}`}
+          title={confidenceAlert?.message || "NCM recomendado pela IA - Clique para revisar"}
         >
-          <AlertCircle className="w-4 h-4 text-yellow-400" />
+          <AlertCircle className={`w-4 h-4 ${isErrorAlert ? 'text-red-400' : isLowConfidence ? 'text-orange-400' : 'text-yellow-400'}`} />
         </button>
       )}
 
       {/* Tooltip */}
       {showTooltip && (
-        <div className="absolute z-50 top-full right-0 mt-1 p-3 bg-slate-800 border border-yellow-500/50 rounded-lg shadow-xl w-80">
+        <div className={`absolute z-50 top-full right-0 mt-1 p-3 bg-slate-800 border rounded-lg shadow-xl w-80 ${
+          isErrorAlert ? 'border-red-500/50' : isLowConfidence ? 'border-orange-500/50' : 'border-yellow-500/50'
+        }`}>
           <div className="flex items-start gap-2 mb-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+            <AlertTriangle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+              isErrorAlert ? 'text-red-400' : isLowConfidence ? 'text-orange-400' : 'text-yellow-400'
+            }`} />
             <div>
-              <p className="text-sm text-yellow-400 font-bold">ATENÇÃO: NCM Sugerido pela IA</p>
+              <p className={`text-sm font-bold ${
+                isErrorAlert ? 'text-red-400' : isLowConfidence ? 'text-orange-400' : 'text-yellow-400'
+              }`}>
+                {isErrorAlert ? '❌ ERRO: NCM Não Classificado' :
+                 isLowConfidence ? '⚠️ ALERTA: Baixa Confiança' :
+                 'ATENÇÃO: NCM Sugerido pela IA'}
+              </p>
               <p className="text-xs text-slate-300 mt-1">
-                Este NCM foi <strong>recomendado automaticamente</strong> pela inteligência artificial
-                com base na descrição do produto.
+                {confidenceAlert?.message ||
+                 'Este NCM foi recomendado automaticamente pela inteligência artificial com base na descrição do produto.'}
               </p>
-              <p className="text-xs text-red-400 mt-2 font-medium">
-                Recomendamos verificar se o NCM está correto antes de prosseguir!
-              </p>
+              {confidenceAlert?.reason === 'generic_ncm' && (
+                <p className="text-xs text-orange-400 mt-2 font-medium">
+                  💡 Dica: NCMs que terminam em 00 ou 0000 são genéricos. Considere uma classificação mais específica.
+                </p>
+              )}
+              {confidenceAlert?.reason === 'not_found' && (
+                <p className="text-xs text-red-400 mt-2 font-medium">
+                  ⚠️ Este item não foi classificado. É obrigatório inserir o NCM correto manualmente!
+                </p>
+              )}
+              {!confidenceAlert && (
+                <p className="text-xs text-red-400 mt-2 font-medium">
+                  Recomendamos verificar se o NCM está correto antes de prosseguir!
+                </p>
+              )}
             </div>
           </div>
 
