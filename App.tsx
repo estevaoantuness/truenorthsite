@@ -2076,7 +2076,7 @@ const Footer = () => {
 // --- PÁGINAS PRINCIPAIS ---
 
 // 1. LANDING PAGE WRAPPER
-const Navbar = ({ onSimulateClick, onOpenAuth, onOpenProfile, currentUser }: { onSimulateClick: () => void; onOpenAuth: () => void; onOpenProfile: () => void; currentUser: api.User | null }) => {
+const Navbar = ({ onSimulateClick, onOpenAuth, onOpenProfile, currentUser, onNavigateHome }: { onSimulateClick: () => void; onOpenAuth: () => void; onOpenProfile: () => void; currentUser: api.User | null; onNavigateHome?: () => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -2098,7 +2098,7 @@ const Navbar = ({ onSimulateClick, onOpenAuth, onOpenProfile, currentUser }: { o
     <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-slate-950/95 backdrop-blur-md border-b border-slate-800' : 'bg-transparent'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
+          <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={onNavigateHome ? onNavigateHome : () => window.scrollTo(0,0)}>
             <Anchor className="h-7 w-7 text-accent-500" />
             <span className="font-bold text-xl tracking-tight text-white">TrueNorth</span>
           </div>
@@ -2408,10 +2408,10 @@ const AuthModal = ({ isOpen, onClose, mode, setMode, onLogin, onRegister, loadin
   );
 };
 
-const LandingPage = ({ onNavigateToSimulation, onOpenAuth, onOpenProfile, currentUser }: { onNavigateToSimulation: () => void; onOpenAuth: () => void; onOpenProfile: () => void; currentUser: api.User | null }) => {
+const LandingPage = ({ onNavigateToSimulation, onOpenAuth, onOpenProfile, currentUser, onNavigateHome }: { onNavigateToSimulation: () => void; onOpenAuth: () => void; onOpenProfile: () => void; currentUser: api.User | null; onNavigateHome?: () => void }) => {
   return (
     <>
-      <Navbar onSimulateClick={onNavigateToSimulation} onOpenAuth={onOpenAuth} onOpenProfile={onOpenProfile} currentUser={currentUser} />
+      <Navbar onSimulateClick={onNavigateToSimulation} onOpenAuth={onOpenAuth} onOpenProfile={onOpenProfile} currentUser={currentUser} onNavigateHome={onNavigateHome} />
       <Hero onSimulateClick={onNavigateToSimulation} />
       <HighLevelFlow />
       <HowItWorks />
@@ -5479,7 +5479,7 @@ export default function App() {
       )}
 
       {currentScreen === 'landing' ? (
-        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={() => openAuth('login')} onOpenProfile={() => setShowProfile(true)} currentUser={currentUser} />
+        <LandingPage onNavigateToSimulation={navigateToSimulation} onOpenAuth={() => openAuth('login')} onOpenProfile={() => setShowProfile(true)} currentUser={currentUser} onNavigateHome={navigateHome} />
       ) : (
         <PlatformSimulationPage
           onNavigateHome={navigateHome}
